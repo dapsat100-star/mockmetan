@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — Sidebar (OGMP 2.0 L5 • Metano)
-# Limpo: KPIs (sparkline + gauge), abas, sem export/copy, sem “quadrado vermelho”.
+# Abas: Medição Atual (KPIs com sparkline + gauge), Próximos Passes, Resultados (RGB/SWIR/MET),
+# Metadados e Resumo. Sem export/copy. Lê sample_measurement.json se existir.
 
-from datetime import datetime
+from datetime import datetime, timezone
 from base64 import b64encode
 from pathlib import Path
 import json
@@ -24,26 +25,82 @@ PANEL_GAP_PX = 24
 
 # ============== LOGO ==================
 logo_uri = ""
-p = Path("dapatlas_fundo_branco.png")
-if p.exists() and p.stat().st_size > 0:
-    logo_uri = "data:image/png;base64," + b64encode(p.read_bytes()).decode("ascii")
+p_logo = Path("dapatlas_fundo_branco.png")
+if p_logo.exists() and p_logo.stat().st_size > 0:
+    logo_uri = "data:image/png;base64," + b64encode(p_logo.read_bytes()).decode("ascii")
 logo_html = (
     f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>"
     if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 )
 
-# ============== DADOS =================
+# ============== DEFAULT DATA =================
 unidade         = "Rio de Janeiro"
-data_medicao    = "12/07/2025 — 10:42 (UTC)"   # exemplo
-rate_kgph       = 180                          # kg CH4/h
-uncert_pct      = 10                           # %
-spark_history   = [160, 170, 150, 180, 175, 182, 180]  # mock
-passes = [
+data_medicao    = "12/07/2025 — 10:42 (UTC)"
+rate_kgph       = 180
+uncert_pct      = 10
+spark_history   = [160, 170, 150, 180, 175, 182, 180]
+passes          = [
     {"sat":"GHGSat-C10","t":"13/07/2025 – 09:12","ang":"52°"},
     {"sat":"GHGSat-C12","t":"14/07/2025 – 10:03","ang":"47°"},
     {"sat":"GHGSat-C11","t":"15/07/2025 – 08:55","ang":"49°"},
 ]
-passes_rows = "\n".join(f"<tr><td>{p['sat']}</td><td>{p['t']}</td><td>{p['ang']}</td></tr>" for p in passes)
+img_rgb, img_swir = "", ""
+colorbar_max = 1000
+
+# ============== TRY LOAD JSON =================
+# Espera o schema descrito na mensagem anterior (sample_measurement.json)
+mfile = Path("sample_measurement.json")
+M = {}
+if mfile.exists() and mfile.stat().st_size > 0:
+    try:
+        M = json.loads(mfile.read_text(encoding="utf-8"))
+    except Exception:
+        M = {}
+
+def fmt_dt_iso_to_utc_human(iso: str) -> str:
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
+    except Exception:
+        return iso
+
+if M:
+    unidade      = M.get("unidade", unidade)
+    if M.get("data_medicao"):
+        data_medicao = fmt_dt_iso_to_utc_human(M["data_medicao"])
+    rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
+    uncert_pct   = M.get("incerteza_pct", uncert_pct)
+    passes       = M.get("passes", passes)
+    img_rgb      = M.get("img_rgb", "")
+    img_swir     = M.get("img_swir", "")
+    colorbar_max = M.get("colorbar_max_ppb", colorbar_max)
+
+passes_rows = "\n".join(
+    f"<tr><td>{p.get('sat','-')}</td><td>{p.get('t','-').replace('T',' ').replace('Z',' UTC')}</td><td>{p.get('ang','-')}</td></tr>"
+    for p in passes
+)
+
+# blocos de tabela da aba RESULTADOS (se não vier JSON, mostram defaults coerentes)
+swir_rows = f"""
+<tr><th>Detecção da Pluma</th><td>{'Sim' if M.get('detec_pluma', True) else 'Não'}</td></tr>
+<tr><th>Identificação da Pluma</th><td>{'Sim' if M.get('ident_pluma', True) else 'Não'}</td></tr>
+<tr><th>Concentração (kgCH₄/h)</th><td>{M.get('taxa_kgch4_h', rate_kgph)}</td></tr>
+<tr><th>Incerteza (%)</th><td>±{M.get('incerteza_pct', uncert_pct)}</td></tr>
+"""
+rgb_rows = f"""
+<tr><th>Estado do Mar</th><td>{M.get('estado_mar','Calmo')}</td></tr>
+<tr><th>Plataforma</th><td>{M.get('plataforma','FPSO')}</td></tr>
+<tr><th>Objetos Detectados</th><td>{', '.join(M.get('objetos_detectados', ['Possível flotel']))}</td></tr>
+<tr><th>Flare Ativo</th><td>{'Sim' if M.get('flare_ativo', True) else 'Não'}</td></tr>
+"""
+met_rows = f"""
+<tr><th>Velocidade do Vento (m/s)</th><td>{M.get('vento_media_ms', 5.2)} ± {M.get('vento_erro_ms', 2.0)}</td></tr>
+<tr><th>Direção do Vento (°)</th><td>{M.get('dir_vento_graus', 270)} (de onde sopra)</td></tr>
+"""
+
+# estilos para esconder imagens se faltar URL
+img_rgb_style  = "display:block" if img_rgb else "display:none"
+img_swir_style = "display:block" if img_swir else "display:none"
 
 # ============== HTML (placeholders) ==============
 html = r"""
@@ -98,12 +155,11 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .badge-pos{background:rgba(52,211,153,.16);color:#34d399;border:1px solid rgba(52,211,153,.35)}
 .badge-neg{background:rgba(248,113,113,.16);color:#f87171;border:1px solid rgba(248,113,113,.35)}
 
-/* Gauge */
+/* Gauge (em verde) */
 .gbox{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px}
 .gauge{width:72px;height:72px}
 .gauge .bg{fill:none;stroke:rgba(255,255,255,.15);stroke-width:6}
 .gauge .val{fill:none;stroke:#34D399;stroke-width:6;transform:rotate(-90deg);transform-origin:50% 50%}
-
 
 /* Tabs */
 .tabs{margin-top:4px}
@@ -164,6 +220,9 @@ table.minimal th{color:#9fb0d4;font-weight:700}
       <input type="radio" name="tab" id="tab-passes">
       <label for="tab-passes">Próximos Passes</label>
 
+      <input type="radio" name="tab" id="tab-result">
+      <label for="tab-result">Resultados</label>
+
       <input type="radio" name="tab" id="tab-meta">
       <label for="tab-meta">Metadados</label>
 
@@ -205,6 +264,41 @@ table.minimal th{color:#9fb0d4;font-weight:700}
         </table>
       </div>
 
+      <!-- Resultados (RGB / SWIR / MET) -->
+      <div class="tab-content" id="content-result" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div class="block">
+            <div class="title">Satélite RGB</div>
+            <div class="body" style="padding:0">
+              <img src="__IMG_RGB__" alt="RGB" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/>
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">Imagem de referência visual (plataforma/embarcações)</div>
+            </div>
+          </div>
+          <div class="block">
+            <div class="title">Satélite SWIR (CH₄)</div>
+            <div class="body" style="padding:0;position:relative">
+              <img src="__IMG_SWIR__" alt="SWIR" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/>
+              <div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">
+                0 – __CB_MAX__ ppb
+              </div>
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">Realce SWIR/CH₄ com escala qualitativa (EABB)</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="block"><div class="title">Resultados SWIR</div>
+            <div class="body"><table class="minimal">__SWIR_ROWS__</table></div>
+          </div>
+          <div class="block"><div class="title">Resultados RGB</div>
+            <div class="body"><table class="minimal">__RGB_ROWS__</table></div>
+          </div>
+          <div class="block"><div class="title">Dados Meteorológicos</div>
+            <div class="body"><table class="minimal">__MET_ROWS__</table></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Metadados -->
       <div class="tab-content" id="content-meta" style="display:none">
         <table class="minimal">
@@ -215,7 +309,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 
       <!-- Resumo -->
       <div class="tab-content" id="content-resumo" style="display:none">
-        <p>Relatório OGMP 2.0 (Nível 5) com KPIs de emissão instantânea e incerteza. Dados fictícios para demonstração.</p>
+        <p>Relatório OGMP 2.0 (Nível 5) com KPIs de emissão instantânea e incerteza. Dados de “Resultados” podem vir via JSON/API.</p>
       </div>
     </div>
 
@@ -231,17 +325,20 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 // Troca das abas
 const elMed  = document.getElementById('content-medicao');
 const elPass = document.getElementById('content-passes');
+const elResu = document.getElementById('content-result');
 const elMeta = document.getElementById('content-meta');
 const elRes  = document.getElementById('content-resumo');
 
 function show(which){
   elMed.style.display  = (which==='med') ? 'block' : 'none';
   elPass.style.display = (which==='pas') ? 'block' : 'none';
+  elResu.style.display = (which==='resu')? 'block' : 'none';
   elMeta.style.display = (which==='met') ? 'block' : 'none';
   elRes.style.display  = (which==='res') ? 'block' : 'none';
 }
 document.getElementById('tab-medicao').onchange = ()=>show('med');
 document.getElementById('tab-passes').onchange  = ()=>show('pas');
+document.getElementById('tab-result').onchange  = ()=>show('resu');
 document.getElementById('tab-meta').onchange    = ()=>show('met');
 document.getElementById('tab-resumo').onchange  = ()=>show('res');
 
@@ -266,10 +363,10 @@ const dataSpark = __SPARK__;
   }
 })();
 
-// ====== Gauge de Incerteza ======
+// ====== Gauge de Incerteza (0-100%) ======
 (function gauge(){
   const unc = Number(document.getElementById('unc-val').textContent) || 0;
-  const dash = Math.max(0, Math.min(100, unc*3.6)); // 0-100
+  const dash = Math.max(0, Math.min(100, unc*3.6)); // 0..100
   document.querySelector('.gauge .val').setAttribute('stroke-dasharray', `${dash},100`);
 })();
 
@@ -319,8 +416,16 @@ html = (html
   .replace("__SPARK__", json.dumps(spark_history))
   .replace("__AGORA__", datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"))
   .replace("__YEAR__", str(datetime.now().year))
+  .replace("__IMG_RGB__", img_rgb or "")
+  .replace("__IMG_SWIR__", img_swir or "")
+  .replace("__CB_MAX__", str(colorbar_max))
+  .replace("__SWIR_ROWS__", swir_rows)
+  .replace("__RGB_ROWS__", rgb_rows)
+  .replace("__MET_ROWS__", met_rows)
+  .replace("__IMG_RGB_STYLE__", img_rgb_style)
+  .replace("__IMG_SWIR_STYLE__", img_swir_style)
 )
 
-components.html(html, height=980, scrolling=False)
+components.html(html, height=1000, scrolling=False)
 
 
