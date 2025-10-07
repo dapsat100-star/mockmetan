@@ -102,7 +102,8 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .gbox{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px}
 .gauge{width:72px;height:72px}
 .gauge .bg{fill:none;stroke:rgba(255,255,255,.15);stroke-width:6}
-.gauge .val{fill:none;stroke:#F59E0B;stroke-width:6;transform:rotate(-90deg);transform-origin:50% 50%}
+.gauge .val{fill:none;stroke:#34D399;stroke-width:6;transform:rotate(-90deg);transform-origin:50% 50%}
+
 
 /* Tabs */
 .tabs{margin-top:4px}
