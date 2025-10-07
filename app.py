@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# DAP ATLAS — Sidebar (OGMP 2.0 L5 • Metano)
-# Abas: Medição Atual (KPIs com sparkline + gauge), Próximos Passes, Resultados (RGB/SWIR/MET),
-# Metadados e Resumo. Sem export/copy. Lê sample_measurement.json se existir.
+# DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
+# Agora com área visual 50/50 (left/right) responsiva ocupando a faixa à esquerda
+# e painel lateral à direita. Somente mockup (sem interatividade).
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -24,14 +24,25 @@ PANEL_W_PX   = 560
 PANEL_GAP_PX = 24
 
 # ============== LOGO ==================
+def as_data_uri(path: Path) -> str:
+    return "data:image/" + path.suffix.lstrip(".") + ";base64," + b64encode(path.read_bytes()).decode("ascii")
+
 logo_uri = ""
 p_logo = Path("dapatlas_fundo_branco.png")
 if p_logo.exists() and p_logo.stat().st_size > 0:
-    logo_uri = "data:image/png;base64," + b64encode(p_logo.read_bytes()).decode("ascii")
+    logo_uri = as_data_uri(p_logo)
 logo_html = (
     f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>"
     if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 )
+
+# ============== SPLIT IMAGES (50/50) ==============
+# Coloque seus arquivos como left.png e right.png (ou troque os nomes abaixo)
+left_img_path  = Path("left.png")
+right_img_path = Path("right.png")
+
+left_uri  = as_data_uri(left_img_path)  if left_img_path.exists()  and left_img_path.stat().st_size  > 0 else ""
+right_uri = as_data_uri(right_img_path) if right_img_path.exists() and right_img_path.stat().st_size > 0 else ""
 
 # ============== DEFAULT DATA =================
 unidade         = "Rio de Janeiro"
@@ -48,7 +59,6 @@ img_rgb, img_swir = "", ""
 colorbar_max = 1000
 
 # ============== TRY LOAD JSON =================
-# Espera o schema descrito na mensagem anterior (sample_measurement.json)
 mfile = Path("sample_measurement.json")
 M = {}
 if mfile.exists() and mfile.stat().st_size > 0:
@@ -80,7 +90,6 @@ passes_rows = "\n".join(
     for p in passes
 )
 
-# blocos de tabela da aba RESULTADOS (se não vier JSON, mostram defaults coerentes)
 swir_rows = f"""
 <tr><th>Detecção da Pluma</th><td>{'Sim' if M.get('detec_pluma', True) else 'Não'}</td></tr>
 <tr><th>Identificação da Pluma</th><td>{'Sim' if M.get('ident_pluma', True) else 'Não'}</td></tr>
@@ -98,11 +107,10 @@ met_rows = f"""
 <tr><th>Direção do Vento (°)</th><td>{M.get('dir_vento_graus', 270)} (de onde sopra)</td></tr>
 """
 
-# estilos para esconder imagens se faltar URL
 img_rgb_style  = "display:block" if img_rgb else "display:none"
 img_swir_style = "display:block" if img_swir else "display:none"
 
-# ============== HTML (placeholders) ==============
+# ============== HTML ==============
 html = r"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
@@ -118,6 +126,33 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica Neue,Arial,Noto Sans,sans-serif}
 
 .stage{min-height:100vh;width:100vw;position:relative}
+
+/* ===== Split 50/50 visual area (left side) ===== */
+.split-wrap{
+  position:absolute;
+  top:var(--gap); bottom:var(--gap); left:var(--gap);
+  right:calc(var(--panel-w) + var(--gap)*2);
+  border:1px solid var(--border); border-radius:12px; overflow:hidden;
+  box-shadow:0 18px 44px rgba(0,0,0,.35);
+  background:#0f172a;
+}
+.split-grid{
+  height:100%; width:100%;
+  display:grid; grid-template-columns:1fr 1fr; gap:0;
+}
+.split-grid .cell{
+  position:relative; overflow:hidden; background:#0e1629;
+}
+.split-grid img{
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+/* linha divisória central (estática, só estética) */
+.split-grid::before{
+  content:""; position:absolute; left:50%; top:0; width:1px; height:100%;
+  background:rgba(255,255,255,.12);
+}
+
+/* ===== Side panel (right) ===== */
 .side-panel{
   position:absolute; top:var(--gap); right:var(--gap); bottom:var(--gap);
   width:var(--panel-w); background:var(--card); border:1px solid var(--border);
@@ -148,14 +183,11 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .kpi .label{color:#b9c6e6;font-size:.9rem;margin-bottom:4px}
 .kpi .value{font-weight:900;font-size:1.6rem;color:#ffffff;line-height:1}
 .kpi .unit{font-size:.95rem;color:#cbd6f2;margin-left:4px}
-
-/* sparkline & delta */
 .spark{width:100%;height:20px;margin-top:6px}
 .badge-pos,.badge-neg{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;font-weight:800;font-size:.8rem}
 .badge-pos{background:rgba(52,211,153,.16);color:#34d399;border:1px solid rgba(52,211,153,.35)}
 .badge-neg{background:rgba(248,113,113,.16);color:#f87171;border:1px solid rgba(248,113,113,.35)}
 
-/* Gauge (em verde) */
 .gbox{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px}
 .gauge{width:72px;height:72px}
 .gauge .bg{fill:none;stroke:rgba(255,255,255,.15);stroke-width:6}
@@ -167,7 +199,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .tabs label{
   display:inline-block; padding:8px 12px; margin-right:8px; border:1px solid var(--border);
   border-bottom:none; border-top-left-radius:10px; border-top-right-radius:10px;
-  color:var(--muted); background:rgba(255,255,255,.02); cursor:pointer; font-weight:700; font-size:.92rem
+  color:#9fb0d4; background:rgba(255,255,255,.02); cursor:pointer; font-weight:700; font-size:.92rem
 }
 .tabs input:checked + label{color:#08121f; background:var(--primary); border-color:var(--primary)}
 .tab-content{border:1px solid var(--border); border-radius:0 12px 12px 12px; padding:12px; margin-top:-1px}
@@ -176,7 +208,6 @@ table.minimal{width:100%;border-collapse:collapse}
 table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
 table.minimal th{color:#9fb0d4;font-weight:700}
 
-/* passes */
 .mapbox{height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:10px;background:
   linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));display:flex;align-items:center;justify-content:center;color:#a9b8df}
 .timeline{display:flex;gap:12px;overflow:auto;padding:8px;border:1px solid var(--border);border-radius:10px;background:#0f1a2e;margin-top:10px}
@@ -189,6 +220,20 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 </head>
 <body>
 <div class="stage">
+
+  <!-- SPLIT VIEW 50/50 -->
+  <div class="split-wrap">
+    <div class="split-grid">
+      <div class="cell">
+        __IMG_LEFT__
+      </div>
+      <div class="cell">
+        __IMG_RIGHT__
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE PANEL -->
   <div class="side-panel" id="panel">
 
     <!-- HEADER -->
@@ -229,7 +274,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
       <input type="radio" name="tab" id="tab-resumo">
       <label for="tab-resumo">Resumo</label>
 
-      <!-- Medição Atual (KPIs + sparkline + gauge) -->
+      <!-- Medição Atual -->
       <div class="tab-content" id="content-medicao">
         <div class="kpi2">
           <div class="kpi" id="kpi-rate">
@@ -264,7 +309,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
         </table>
       </div>
 
-      <!-- Resultados (RGB / SWIR / MET) -->
+      <!-- Resultados -->
       <div class="tab-content" id="content-result" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="block">
@@ -322,13 +367,12 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 </div>
 
 <script>
-// Troca das abas
+// Abas
 const elMed  = document.getElementById('content-medicao');
 const elPass = document.getElementById('content-passes');
 const elResu = document.getElementById('content-result');
 const elMeta = document.getElementById('content-meta');
 const elRes  = document.getElementById('content-resumo');
-
 function show(which){
   elMed.style.display  = (which==='med') ? 'block' : 'none';
   elPass.style.display = (which==='pas') ? 'block' : 'none';
@@ -342,40 +386,37 @@ document.getElementById('tab-result').onchange  = ()=>show('resu');
 document.getElementById('tab-meta').onchange    = ()=>show('met');
 document.getElementById('tab-resumo').onchange  = ()=>show('res');
 
-// ====== KPI Sparkline + Delta ======
+// Sparkline + delta
 const dataSpark = __SPARK__;
 (function drawSpark(){
   const el = document.getElementById('sp-rate');
   const data = dataSpark && dataSpark.length ? dataSpark : [__RATE__];
-  const W=100,H=28, pad=2, min=Math.min(...data), max=Math.max(...data);
-  const x=i=>pad+i*((W-pad*2)/(data.length-1 || 1));
-  const y=v=>H-pad - ((v-min)/(max-min || 1))*(H-pad*2);
+  const W=100,H=28,pad=2,min=Math.min(...data),max=Math.max(...data);
+  const x=i=>pad+i*((W-pad*2)/(data.length-1||1));
+  const y=v=>H-pad-((v-min)/(max-min||1))*(H-pad*2);
   el.innerHTML = `<polyline fill="none" stroke="#4EA8DE" stroke-width="2"
     points="${data.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}"/>`;
-
   if(data.length>1){
-    const prevAvg = data.slice(0,-1).reduce((a,b)=>a+b,0)/(data.length-1);
-    const last = data[data.length-1]; const delta = ((last - prevAvg)/Math.max(prevAvg,1e-6))*100;
-    const tag = document.getElementById('rate-delta');
-    tag.textContent = (delta>=0? '↑ ':'↓ ') + Math.abs(delta).toFixed(1) + '%';
-    tag.className = (delta>=0)? 'badge-pos' : 'badge-neg';
-    tag.style.display = 'inline-block';
+    const prevAvg=data.slice(0,-1).reduce((a,b)=>a+b,0)/(data.length-1);
+    const last=data[data.length-1]; const d=((last-prevAvg)/Math.max(prevAvg,1e-6))*100;
+    const tag=document.getElementById('rate-delta');
+    tag.textContent=(d>=0?'↑ ':'↓ ')+Math.abs(d).toFixed(1)+'%';
+    tag.className=(d>=0)?'badge-pos':'badge-neg'; tag.style.display='inline-block';
   }
 })();
 
-// ====== Gauge de Incerteza (0-100%) ======
+// Gauge
 (function gauge(){
   const unc = Number(document.getElementById('unc-val').textContent) || 0;
-  const dash = Math.max(0, Math.min(100, unc*3.6)); // 0..100
+  const dash = Math.max(0, Math.min(100, unc*3.6));
   document.querySelector('.gauge .val').setAttribute('stroke-dasharray', `${dash},100`);
 })();
 
-// ====== Passes: mini-mapa + timeline ======
+// Passes mini-mapa + timeline (mock)
 const passes = __PASSES_JSON__;
-
 (function miniMap(){
   const div = document.getElementById('map-passes');
-  const W=300, H=220;
+  const W=300,H=220;
   let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%"><rect x="0" y="0" width="${W}" height="${H}" fill="#0e172b"/>`;
   passes.forEach((p,i)=>{
     const cx = 60 + i*90, cy = 110 + (i%2? -20:20);
@@ -387,7 +428,6 @@ const passes = __PASSES_JSON__;
   svg += `</svg>`;
   div.innerHTML = svg;
 })();
-
 (function timeline(){
   const tl = document.getElementById('tl');
   tl.innerHTML = passes.map(p=>`<div class="badge-pass"><b>${p.sat}</b><br><small>${p.t} • ${p.ang}</small></div>`).join('');
@@ -425,6 +465,12 @@ html = (html
   .replace("__IMG_RGB_STYLE__", img_rgb_style)
   .replace("__IMG_SWIR_STYLE__", img_swir_style)
 )
+
+# inserir as imagens do split (ou placeholders se faltarem)
+img_left_html  = f"<img src='{left_uri}' alt='Left'/>"  if left_uri  else "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9fb0d4'>left.png</div>"
+img_right_html = f"<img src='{right_uri}' alt='Right'/>" if right_uri else "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9fb0d4'>right.png</div>"
+
+html = html.replace("__IMG_LEFT__", img_left_html).replace("__IMG_RIGHT__", img_right_html)
 
 components.html(html, height=1000, scrolling=False)
 
