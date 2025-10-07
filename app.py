@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — Sidebar (OGMP 2.0 L5 • Metano)
-# Extras: sparkline + delta, gauge circular, mini-mapa footprints, timeline passes, baixar CSV, copiar KPI, toast, export SVG/PDF
+# Limpo: KPIs (sparkline + gauge), abas, sem export/copy, sem “quadrado vermelho”.
+
 from datetime import datetime
 from base64 import b64encode
 from pathlib import Path
@@ -10,7 +11,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="DAP ATLAS — OGMP 2.0 L5", page_icon="🛰️", layout="wide")
 
-# ================= THEME =================
+# ============== THEME =================
 PRIMARY   = "#00E3A5"
 BG_DARK   = "#0b1221"
 CARD_DARK = "#10182b"
@@ -21,7 +22,7 @@ BORDER    = "rgba(255,255,255,.10)"
 PANEL_W_PX   = 560
 PANEL_GAP_PX = 24
 
-# =============== LOGO (opcional) ===============
+# ============== LOGO ==================
 logo_uri = ""
 p = Path("dapatlas_fundo_branco.png")
 if p.exists() and p.stat().st_size > 0:
@@ -31,26 +32,20 @@ logo_html = (
     if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 )
 
-# =============== DADOS (mock) ===============
+# ============== DADOS =================
 unidade         = "Rio de Janeiro"
-data_medicao    = "12/07/2025 — 10:42 (UTC)"   # exemplo inventado
+data_medicao    = "12/07/2025 — 10:42 (UTC)"   # exemplo
 rate_kgph       = 180                          # kg CH4/h
 uncert_pct      = 10                           # %
-
-# Próximos passes (exemplo)
+spark_history   = [160, 170, 150, 180, 175, 182, 180]  # mock
 passes = [
     {"sat":"GHGSat-C10","t":"13/07/2025 – 09:12","ang":"52°"},
     {"sat":"GHGSat-C12","t":"14/07/2025 – 10:03","ang":"47°"},
     {"sat":"GHGSat-C11","t":"15/07/2025 – 08:55","ang":"49°"},
 ]
 passes_rows = "\n".join(f"<tr><td>{p['sat']}</td><td>{p['t']}</td><td>{p['ang']}</td></tr>" for p in passes)
-passes_json = json.dumps(passes, ensure_ascii=False)
 
-# Sparkline (mock dos últimos 7 dias/leituras)
-spark_history = [160, 170, 150, 180, 175, 182, 180]
-spark_json = json.dumps(spark_history)
-
-# =============== HTML com PLACEHOLDERS (sem f-string) ===============
+# ============== HTML (placeholders) ==============
 html = r"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
@@ -91,16 +86,11 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 
 /* KPIs */
 .kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.kpi{
-  background:rgba(255,255,255,.04); border:1px solid var(--border);
-  border-radius:12px; padding:14px 12px; text-align:center; position:relative
-}
+.kpi{background:rgba(255,255,255,.04); border:1px solid var(--border);
+  border-radius:12px; padding:14px 12px; text-align:center; position:relative}
 .kpi .label{color:#b9c6e6;font-size:.9rem;margin-bottom:4px}
 .kpi .value{font-weight:900;font-size:1.6rem;color:#ffffff;line-height:1}
 .kpi .unit{font-size:.95rem;color:#cbd6f2;margin-left:4px}
-.btn-mini{margin-left:8px;padding:4px 8px;border-radius:8px;border:1px solid var(--border);
-background:rgba(255,255,255,.06);color:#e6eefc;font-weight:700}
-.btn-mini:hover{border-color:#34d399}
 
 /* sparkline & delta */
 .spark{width:100%;height:20px;margin-top:6px}
@@ -129,7 +119,7 @@ table.minimal{width:100%;border-collapse:collapse}
 table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
 table.minimal th{color:#9fb0d4;font-weight:700}
 
-/* passes: mapa + timeline */
+/* passes */
 .mapbox{height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:10px;background:
   linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));display:flex;align-items:center;justify-content:center;color:#a9b8df}
 .timeline{display:flex;gap:12px;overflow:auto;padding:8px;border:1px solid var(--border);border-radius:10px;background:#0f1a2e;margin-top:10px}
@@ -137,15 +127,6 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 .badge-pass b{color:#e6eefc}
 .badge-pass small{color:#b9c6e6}
 
-/* Tooltip */
-.tip{position:relative;cursor:help}
-.tip:hover::after{content:attr(data-tip);position:absolute;left:50%;transform:translateX(-50%);
-bottom:125%;background:#0f1a2e;color:#e6eefc;padding:8px 10px;border:1px solid var(--border);
-border-radius:8px;white-space:nowrap;box-shadow:0 8px 20px rgba(0,0,0,.35)}
-
-/* toast */
-.toast{position:fixed;bottom:12px;right:12px;background:rgba(15,26,46,.9);
-color:#e6eefc;border:1px solid var(--border);padding:8px 10px;border-radius:10px}
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
 </style>
 </head>
@@ -188,22 +169,20 @@ color:#e6eefc;border:1px solid var(--border);padding:8px 10px;border-radius:10px
       <input type="radio" name="tab" id="tab-resumo">
       <label for="tab-resumo">Resumo</label>
 
-      <!-- Medição Atual (KPIs + sparkline + gauge + copy) -->
+      <!-- Medição Atual (KPIs + sparkline + gauge) -->
       <div class="tab-content" id="content-medicao">
         <div class="kpi2">
           <div class="kpi" id="kpi-rate">
-            <div class="label tip" data-tip="Taxa instantânea estimada da fonte">Taxa</div>
+            <div class="label">Taxa</div>
             <div><span class="value" id="rate-val">__RATE__</span><span class="unit">kg CH₄/h</span>
-              <button class="btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('rate-val').textContent)">copiar</button>
               <span id="rate-delta" class="badge-pos" style="display:none"></span>
             </div>
             <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" id="sp-rate"></svg>
           </div>
           <div class="kpi">
-            <div class="label tip" data-tip="Incerteza (1σ) do método de quantificação">Incerteza de Medição</div>
+            <div class="label">Incerteza de Medição</div>
             <div style="display:flex;align-items:center;justify-content:center;gap:6px">
               <span class="value" id="unc-val">__UNC__</span><span class="unit">%</span>
-              <button class="btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('unc-val').textContent + '%')">copiar</button>
             </div>
             <div class="gbox">
               <svg viewBox="0 0 42 42" class="gauge"><circle class="bg" cx="21" cy="21" r="16"/>
@@ -218,10 +197,6 @@ color:#e6eefc;border:1px solid var(--border);padding:8px 10px;border-radius:10px
         <div class="section-title" style="font-weight:800;margin:2px 0 8px">Previsão de Passes</div>
         <div id="map-passes" class="mapbox">Mini-mapa de footprints</div>
         <div class="timeline" id="tl"></div>
-        <div style="margin-top:10px;display:flex;gap:10px">
-          <a class="btn-mini" href="#" onclick="dlCSV();return false;">Baixar CSV</a>
-          <a class="btn-mini" href="#" onclick="exportPDF();return false;">Exportar PDF</a>
-        </div>
         <div style="height:10px"></div>
         <table class="minimal">
           <thead><tr><th>Satélite</th><th>Data/Hora (UTC)</th><th>Ângulo</th></tr></thead>
@@ -245,18 +220,11 @@ color:#e6eefc;border:1px solid var(--border);padding:8px 10px;border-radius:10px
 
     <div class="footer">
       <div>© __YEAR__ MAVIPE Sistemas Espaciais</div>
-      <div>Atalhos: S = SVG • P = PDF</div>
+      <div></div>
     </div>
 
   </div>
 </div>
-
-<div class="toast">Dicas: S = exportar SVG • P = exportar PDF • Clique em “copiar” nos KPIs</div>
-
-<!-- libs para exportação -->
-<script src="https://cdn.jsdelivr.net/npm/dom-to-image-more@2.8.0/dist/dom-to-image-more.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js"></script>
 
 <script>
 // Troca das abas
@@ -277,17 +245,16 @@ document.getElementById('tab-meta').onchange    = ()=>show('met');
 document.getElementById('tab-resumo').onchange  = ()=>show('res');
 
 // ====== KPI Sparkline + Delta ======
-const spark = __SPARK__;
+const dataSpark = __SPARK__;
 (function drawSpark(){
   const el = document.getElementById('sp-rate');
-  const data = spark && spark.length ? spark : [__RATE__];
+  const data = dataSpark && dataSpark.length ? dataSpark : [__RATE__];
   const W=100,H=28, pad=2, min=Math.min(...data), max=Math.max(...data);
   const x=i=>pad+i*((W-pad*2)/(data.length-1 || 1));
   const y=v=>H-pad - ((v-min)/(max-min || 1))*(H-pad*2);
   el.innerHTML = `<polyline fill="none" stroke="#4EA8DE" stroke-width="2"
     points="${data.map((v,i)=>`${x(i)},${y(v)}`).join(' ')}"/>`;
 
-  // delta vs média (últimos n-1)
   if(data.length>1){
     const prevAvg = data.slice(0,-1).reduce((a,b)=>a+b,0)/(data.length-1);
     const last = data[data.length-1]; const delta = ((last - prevAvg)/Math.max(prevAvg,1e-6))*100;
@@ -305,19 +272,17 @@ const spark = __SPARK__;
   document.querySelector('.gauge .val').setAttribute('stroke-dasharray', `${dash},100`);
 })();
 
-// ====== Passes: mini-mapa + timeline + CSV ======
+// ====== Passes: mini-mapa + timeline ======
 const passes = __PASSES_JSON__;
 
 (function miniMap(){
   const div = document.getElementById('map-passes');
   const W=300, H=220;
-  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%">
-    <rect x="0" y="0" width="${W}" height="${H}" fill="#0e172b"/>`;
-  // Distribui footprints pela largura
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%"><rect x="0" y="0" width="${W}" height="${H}" fill="#0e172b"/>`;
   passes.forEach((p,i)=>{
     const cx = 60 + i*90, cy = 110 + (i%2? -20:20);
     const ang = parseInt((p.ang||'0').replace('°',''))||45;
-    const r = 25 + Math.min(35, Math.max(0,(ang-30))); // raio ≈ função do ângulo
+    const r = 25 + Math.min(35, Math.max(0,(ang-30)));
     const col = i%3===0? '#4EA8DE' : (i%3===1? '#34d399' : '#F59E0B');
     svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}20" stroke="${col}" />`;
   });
@@ -329,52 +294,11 @@ const passes = __PASSES_JSON__;
   const tl = document.getElementById('tl');
   tl.innerHTML = passes.map(p=>`<div class="badge-pass"><b>${p.sat}</b><br><small>${p.t} • ${p.ang}</small></div>`).join('');
 })();
-
-function dlCSV(){
-  const rows = [['satellite','datetime_utc','angle']].concat(passes.map(p=>[p.sat,p.t,p.ang]));
-  const csv = rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='passes.csv'; a.click();
-}
-
-// ====== Exportação do painel ======
-const PANEL = document.getElementById('panel');
-async function exportSVG(){
-  const dataUrl = await domtoimage.toSvg(PANEL, { bgcolor: '__CARD__', quality: 1 });
-  const a = document.createElement('a'); a.href = dataUrl; a.download = 'OGMP_L5_Sidebar.svg'; a.click();
-}
-async function exportPDF(){
-  const svgUrl  = await domtoimage.toSvg(PANEL, { bgcolor: '__CARD__', quality: 1 });
-  const svgText = await (await fetch(svgUrl)).text();
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'p' });
-
-  const parser = new DOMParser();
-  const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
-  const svgEl  = svgDoc.documentElement;
-
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const width  = PANEL.offsetWidth;
-  const height = PANEL.offsetHeight;
-  const scale = Math.min(pageW/width, pageH/height);
-
-  window.svg2pdf(svgEl, pdf, {
-    x:(pageW-width*scale)/2, y:(pageH-height*scale)/2, scale: scale
-  });
-  pdf.save('OGMP_L5_Sidebar.pdf');
-}
-
-// atalhos S/P
-document.addEventListener('keydown', (e)=>{
-  if(e.key==='s'||e.key==='S') exportSVG();
-  if(e.key==='p'||e.key==='P') exportPDF();
-});
 </script>
 </body></html>
 """
 
-# ----- substituições seguras -----
+# ====== Substituições ======
 html = (html
   .replace("__PANEL_W__", str(PANEL_W_PX))
   .replace("__PANEL_GAP__", str(PANEL_GAP_PX))
@@ -390,12 +314,12 @@ html = (html
   .replace("__RATE__", str(rate_kgph))
   .replace("__UNC__", str(uncert_pct))
   .replace("__PASSES_ROWS__", passes_rows)
-  .replace("__PASSES_JSON__", passes_json)
-  .replace("__SPARK__", spark_json)
+  .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
+  .replace("__SPARK__", json.dumps(spark_history))
   .replace("__AGORA__", datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"))
   .replace("__YEAR__", str(datetime.now().year))
 )
 
-components.html(html, height=1000, scrolling=False)
+components.html(html, height=980, scrolling=False)
 
 
