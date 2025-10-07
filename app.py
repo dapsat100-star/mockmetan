@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
-# Split visual 50/50 (left/right) + painel lateral. Agora mostra:
-# - Data/Hora de Aquisição (RGB e SWIR) e
-# - Diferença entre passagens (min) RGB↔SWIR.
+# Visual 50/50 (left/right) com imagens "abertas" (contain) + painel lateral.
+# Mostra horários de aquisição RGB/SWIR e diferença em minutos.
+# Se existir sample_measurement.json, carrega dados (opcional).
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -24,10 +24,26 @@ BORDER    = "rgba(255,255,255,.10)"
 PANEL_W_PX   = 560
 PANEL_GAP_PX = 24
 
-# ============== LOGO ==================
+# ============== HELPERS ==============
 def as_data_uri(path: Path) -> str:
     return "data:image/" + path.suffix.lstrip(".") + ";base64," + b64encode(path.read_bytes()).decode("ascii")
 
+def fmt_dt_iso_to_utc_human(iso: str) -> str:
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+        return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
+    except Exception:
+        return iso
+
+def diff_minutes(dt1_iso: str, dt2_iso: str) -> int | None:
+    try:
+        d1 = datetime.fromisoformat(dt1_iso.replace("Z","+00:00")).astimezone(timezone.utc)
+        d2 = datetime.fromisoformat(dt2_iso.replace("Z","+00:00")).astimezone(timezone.utc)
+        return int(abs((d2-d1).total_seconds())//60)
+    except Exception:
+        return None
+
+# ============== LOGO ==================
 logo_uri = ""
 p_logo = Path("dapatlas_fundo_branco.png")
 if p_logo.exists() and p_logo.stat().st_size > 0:
@@ -38,8 +54,8 @@ logo_html = (
 )
 
 # ============== SPLIT IMAGES (50/50) ==============
-left_img_path  = Path("left.png")   # RGB
-right_img_path = Path("right.png")  # SWIR
+left_img_path  = Path("left.png")   # RGB borrada
+right_img_path = Path("right.png")  # SWIR/pluma
 
 left_uri  = as_data_uri(left_img_path)  if left_img_path.exists()  and left_img_path.stat().st_size  > 0 else ""
 right_uri = as_data_uri(right_img_path) if right_img_path.exists() and right_img_path.stat().st_size > 0 else ""
@@ -58,26 +74,14 @@ passes          = [
 img_rgb, img_swir = "", ""
 colorbar_max = 1000
 
-# Datas/horas de aquisição (defaults) — podem ser sobrescritas via JSON
-rgb_dt_iso  = "2025-04-29T08:06:00Z"
-swir_dt_iso = "2025-04-29T10:36:00Z"
+# horários de aquisição (exemplo real do seu mock)
+rgb_iso  = "2025-04-29T08:06:00Z"
+swir_iso = "2025-04-29T10:36:00Z"
+rgb_human  = fmt_dt_iso_to_utc_human(rgb_iso)
+swir_human = fmt_dt_iso_to_utc_human(swir_iso)
+delta_min  = diff_minutes(rgb_iso, swir_iso) or 0
 
-def fmt_dt_iso_to_utc_human(iso: str) -> str:
-    try:
-        dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc)
-        return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
-    except Exception:
-        return iso
-
-def parse_iso(iso: str):
-    try:
-        return datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-    except Exception:
-        return None
-
-# ============== TRY LOAD JSON =================
-# Opcional: sample_measurement.json pode conter:
-#  "rgb_datetime": "2025-04-29T08:06:00Z", "swir_datetime": "2025-04-29T10:36:00Z"
+# ============== TRY LOAD JSON (opcional) =================
 mfile = Path("sample_measurement.json")
 M = {}
 if mfile.exists() and mfile.stat().st_size > 0:
@@ -93,22 +97,15 @@ if M:
     rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
     uncert_pct   = M.get("incerteza_pct", uncert_pct)
     passes       = M.get("passes", passes)
-    img_rgb      = M.get("img_rgb", "")
-    img_swir     = M.get("img_swir", "")
+    img_rgb      = M.get("img_rgb", img_rgb)
+    img_swir     = M.get("img_swir", img_swir)
     colorbar_max = M.get("colorbar_max_ppb", colorbar_max)
-    rgb_dt_iso   = M.get("rgb_datetime", rgb_dt_iso)
-    swir_dt_iso  = M.get("swir_datetime", swir_dt_iso)
-
-rgb_dt_human  = fmt_dt_iso_to_utc_human(rgb_dt_iso)
-swir_dt_human = fmt_dt_iso_to_utc_human(swir_dt_iso)
-rgb_dt  = parse_iso(rgb_dt_iso)
-swir_dt = parse_iso(swir_dt_iso)
-delta_min = ""
-if rgb_dt and swir_dt:
-    delta_min = str(int(abs((swir_dt - rgb_dt).total_seconds()) // 60))
-else:
-    # fallback: usa os defaults acima (08:06 -> 10:36 = 150 min)
-    delta_min = "150"
+    # horários vindos do JSON (se houver)
+    rgb_iso  = M.get("rgb_datetime_iso", rgb_iso)
+    swir_iso = M.get("swir_datetime_iso", swir_iso)
+    rgb_human  = fmt_dt_iso_to_utc_human(rgb_iso)
+    swir_human = fmt_dt_iso_to_utc_human(swir_iso)
+    delta_min  = diff_minutes(rgb_iso, swir_iso) or delta_min
 
 passes_rows = "\n".join(
     f"<tr><td>{p.get('sat','-')}</td><td>{p.get('t','-').replace('T',' ').replace('Z',' UTC')}</td><td>{p.get('ang','-')}</td></tr>"
@@ -152,7 +149,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 
 .stage{min-height:100vh;width:100vw;position:relative}
 
-/* ===== Split 50/50 visual area (left side) ===== */
+/* ===== Split 50/50 visual area (left side) – OPTION A (contain) ===== */
 .split-wrap{
   position:absolute;
   top:var(--gap); bottom:var(--gap); left:var(--gap);
@@ -164,23 +161,27 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .split-grid{
   height:100%; width:100%;
   display:grid; grid-template-columns:1fr 1fr; gap:0;
+  position:relative;
 }
 .split-grid .cell{
   position:relative; overflow:hidden; background:#0e1629;
+  display:flex; align-items:center; justify-content:center;
 }
 .split-grid img{
-  width:100%; height:100%; object-fit:cover; display:block;
+  max-width:100%; max-height:100%;
+  width:auto; height:auto; object-fit:contain; display:block;
+  background:#0e1629;
 }
-/* linha divisória central (estética) */
+/* divisória e chips de hora */
 .split-grid::before{
   content:""; position:absolute; left:50%; top:0; width:1px; height:100%;
   background:rgba(255,255,255,.12);
 }
-/* overlays de data/hora */
-.badge-dt{
-  position:absolute; left:8px; top:8px;
-  background:rgba(0,0,0,.45); border:1px solid var(--border);
-  color:#e6eefc; font-size:.85rem; border-radius:8px; padding:6px 8px;
+.chip{
+  position:absolute; top:10px; left:10px;
+  padding:6px 10px; border-radius:999px; font-size:.8rem; font-weight:700;
+  color:#d7e2ff; background:rgba(15,26,46,.7); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:saturate(130%) blur(3px);
 }
 
 /* ===== Side panel (right) ===== */
@@ -207,7 +208,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
 .block .body{padding:10px}
 
-/* KPI simples */
+/* KPIs */
 .kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .kpi{background:rgba(255,255,255,.04); border:1px solid var(--border);
   border-radius:12px; padding:14px 12px; text-align:center; position:relative}
@@ -247,14 +248,6 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 .badge-pass small{color:#b9c6e6}
 
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
-
-/* chip diferença (min) */
-.diff-chip{
-  display:inline-flex; align-items:center; gap:6px;
-  background:rgba(78,168,222,.15); color:#cfe7ff;
-  border:1px solid rgba(78,168,222,.35); padding:6px 10px; border-radius:999px;
-  font-weight:800; font-size:.85rem;
-}
 </style>
 </head>
 <body>
@@ -264,12 +257,12 @@ table.minimal th{color:#9fb0d4;font-weight:700}
   <div class="split-wrap">
     <div class="split-grid">
       <div class="cell">
+        <span class="chip">RGB: __RGB_HUMAN__</span>
         __IMG_LEFT__
-        <div class="badge-dt">RGB: __RGB_DT__</div>
       </div>
       <div class="cell">
+        <span class="chip" style="left:auto; right:10px;">SWIR: __SWIR_HUMAN__</span>
         __IMG_RIGHT__
-        <div class="badge-dt">SWIR: __SWIR_DT__</div>
       </div>
     </div>
   </div>
@@ -290,13 +283,16 @@ table.minimal th{color:#9fb0d4;font-weight:700}
     </div>
     <div class="hr"></div>
 
-    <!-- Unidade + Data + Diferença -->
+    <!-- Unidade + Data -->
     <div class="block">
       <div class="body" style="padding:10px 12px">
         <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Unidade: __UNIDADE__</div>
         <div style="font-size:.9rem;color:#b9c6e6">Data da Medição: __DATA_MEDICAO__</div>
         <div style="margin-top:8px">
-          <span class="diff-chip">Diferença entre passagens: <b>__DELTA_MIN__ min</b></span>
+          <span style="background:rgba(78,168,222,.18);border:1px solid rgba(78,168,222,.35);color:#cfe7ff;
+                       padding:6px 10px;border-radius:999px;font-weight:800;font-size:.85rem;">
+            Diferença entre passagens: __DELTA_MIN__ min
+          </span>
         </div>
       </div>
     </div>
@@ -359,24 +355,24 @@ table.minimal th{color:#9fb0d4;font-weight:700}
           <div class="block">
             <div class="title">Satélite RGB</div>
             <div class="body" style="padding:0">
-              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem;border-bottom:1px solid var(--border)">
-                Data/Hora de Aquisição: __RGB_DT__
-              </div>
               <img src="__IMG_RGB__" alt="RGB" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/>
-              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">Imagem de referência visual (plataforma/embarcações)</div>
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">
+                <b>Data/Hora de Aquisição:</b> __RGB_HUMAN__<br>
+                Imagem de referência visual (plataforma/embarcações)
+              </div>
             </div>
           </div>
           <div class="block">
             <div class="title">Satélite SWIR (CH₄)</div>
             <div class="body" style="padding:0;position:relative">
-              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem;border-bottom:1px solid var(--border)">
-                Data/Hora de Aquisição: __SWIR_DT__
-              </div>
               <img src="__IMG_SWIR__" alt="SWIR" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/>
-              <div style="position:absolute;right:8px;top:48px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">
+              <div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">
                 0 – __CB_MAX__ ppb
               </div>
-              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">Realce SWIR/CH₄ com escala qualitativa (EABB)</div>
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">
+                <b>Data/Hora de Aquisição:</b> __SWIR_HUMAN__<br>
+                Realce SWIR/CH₄ com escala qualitativa (EABB)
+              </div>
             </div>
           </div>
         </div>
@@ -514,14 +510,16 @@ html = (html
   .replace("__MET_ROWS__", met_rows)
   .replace("__IMG_RGB_STYLE__", img_rgb_style)
   .replace("__IMG_SWIR_STYLE__", img_swir_style)
-  .replace("__RGB_DT__", rgb_dt_human)
-  .replace("__SWIR_DT__", swir_dt_human)
-  .replace("__DELTA_MIN__", delta_min)
+  .replace("__RGB_HUMAN__", rgb_human)
+  .replace("__SWIR_HUMAN__", swir_human)
+  .replace("__DELTA_MIN__", str(delta_min))
 )
 
-# imagens do split (ou placeholders)
+# inserir as imagens do split (ou placeholders)
 img_left_html  = f"<img src='{left_uri}' alt='Left'/>"  if left_uri  else "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9fb0d4'>left.png</div>"
 img_right_html = f"<img src='{right_uri}' alt='Right'/>" if right_uri else "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9fb0d4'>right.png</div>"
+
 html = html.replace("__IMG_LEFT__", img_left_html).replace("__IMG_RIGHT__", img_right_html)
 
 components.html(html, height=1000, scrolling=False)
+
