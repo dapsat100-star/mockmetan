@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
-# Agora com área visual 50/50 (left/right) responsiva ocupando a faixa à esquerda
-# e painel lateral à direita. Somente mockup (sem interatividade).
+# Split visual 50/50 (left/right) + painel lateral. Agora mostra:
+# - Data/Hora de Aquisição (RGB e SWIR) e
+# - Diferença entre passagens (min) RGB↔SWIR.
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -37,9 +38,8 @@ logo_html = (
 )
 
 # ============== SPLIT IMAGES (50/50) ==============
-# Coloque seus arquivos como left.png e right.png (ou troque os nomes abaixo)
-left_img_path  = Path("left.png")
-right_img_path = Path("right.png")
+left_img_path  = Path("left.png")   # RGB
+right_img_path = Path("right.png")  # SWIR
 
 left_uri  = as_data_uri(left_img_path)  if left_img_path.exists()  and left_img_path.stat().st_size  > 0 else ""
 right_uri = as_data_uri(right_img_path) if right_img_path.exists() and right_img_path.stat().st_size > 0 else ""
@@ -58,14 +58,9 @@ passes          = [
 img_rgb, img_swir = "", ""
 colorbar_max = 1000
 
-# ============== TRY LOAD JSON =================
-mfile = Path("sample_measurement.json")
-M = {}
-if mfile.exists() and mfile.stat().st_size > 0:
-    try:
-        M = json.loads(mfile.read_text(encoding="utf-8"))
-    except Exception:
-        M = {}
+# Datas/horas de aquisição (defaults) — podem ser sobrescritas via JSON
+rgb_dt_iso  = "2025-04-29T08:06:00Z"
+swir_dt_iso = "2025-04-29T10:36:00Z"
 
 def fmt_dt_iso_to_utc_human(iso: str) -> str:
     try:
@@ -73,6 +68,23 @@ def fmt_dt_iso_to_utc_human(iso: str) -> str:
         return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
     except Exception:
         return iso
+
+def parse_iso(iso: str):
+    try:
+        return datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
+    except Exception:
+        return None
+
+# ============== TRY LOAD JSON =================
+# Opcional: sample_measurement.json pode conter:
+#  "rgb_datetime": "2025-04-29T08:06:00Z", "swir_datetime": "2025-04-29T10:36:00Z"
+mfile = Path("sample_measurement.json")
+M = {}
+if mfile.exists() and mfile.stat().st_size > 0:
+    try:
+        M = json.loads(mfile.read_text(encoding="utf-8"))
+    except Exception:
+        M = {}
 
 if M:
     unidade      = M.get("unidade", unidade)
@@ -84,6 +96,19 @@ if M:
     img_rgb      = M.get("img_rgb", "")
     img_swir     = M.get("img_swir", "")
     colorbar_max = M.get("colorbar_max_ppb", colorbar_max)
+    rgb_dt_iso   = M.get("rgb_datetime", rgb_dt_iso)
+    swir_dt_iso  = M.get("swir_datetime", swir_dt_iso)
+
+rgb_dt_human  = fmt_dt_iso_to_utc_human(rgb_dt_iso)
+swir_dt_human = fmt_dt_iso_to_utc_human(swir_dt_iso)
+rgb_dt  = parse_iso(rgb_dt_iso)
+swir_dt = parse_iso(swir_dt_iso)
+delta_min = ""
+if rgb_dt and swir_dt:
+    delta_min = str(int(abs((swir_dt - rgb_dt).total_seconds()) // 60))
+else:
+    # fallback: usa os defaults acima (08:06 -> 10:36 = 150 min)
+    delta_min = "150"
 
 passes_rows = "\n".join(
     f"<tr><td>{p.get('sat','-')}</td><td>{p.get('t','-').replace('T',' ').replace('Z',' UTC')}</td><td>{p.get('ang','-')}</td></tr>"
@@ -146,10 +171,16 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .split-grid img{
   width:100%; height:100%; object-fit:cover; display:block;
 }
-/* linha divisória central (estática, só estética) */
+/* linha divisória central (estética) */
 .split-grid::before{
   content:""; position:absolute; left:50%; top:0; width:1px; height:100%;
   background:rgba(255,255,255,.12);
+}
+/* overlays de data/hora */
+.badge-dt{
+  position:absolute; left:8px; top:8px;
+  background:rgba(0,0,0,.45); border:1px solid var(--border);
+  color:#e6eefc; font-size:.85rem; border-radius:8px; padding:6px 8px;
 }
 
 /* ===== Side panel (right) ===== */
@@ -176,7 +207,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
 .block .body{padding:10px}
 
-/* KPIs */
+/* KPI simples */
 .kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .kpi{background:rgba(255,255,255,.04); border:1px solid var(--border);
   border-radius:12px; padding:14px 12px; text-align:center; position:relative}
@@ -216,6 +247,14 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 .badge-pass small{color:#b9c6e6}
 
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
+
+/* chip diferença (min) */
+.diff-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(78,168,222,.15); color:#cfe7ff;
+  border:1px solid rgba(78,168,222,.35); padding:6px 10px; border-radius:999px;
+  font-weight:800; font-size:.85rem;
+}
 </style>
 </head>
 <body>
@@ -226,9 +265,11 @@ table.minimal th{color:#9fb0d4;font-weight:700}
     <div class="split-grid">
       <div class="cell">
         __IMG_LEFT__
+        <div class="badge-dt">RGB: __RGB_DT__</div>
       </div>
       <div class="cell">
         __IMG_RIGHT__
+        <div class="badge-dt">SWIR: __SWIR_DT__</div>
       </div>
     </div>
   </div>
@@ -249,11 +290,14 @@ table.minimal th{color:#9fb0d4;font-weight:700}
     </div>
     <div class="hr"></div>
 
-    <!-- Unidade + Data -->
+    <!-- Unidade + Data + Diferença -->
     <div class="block">
       <div class="body" style="padding:10px 12px">
         <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Unidade: __UNIDADE__</div>
         <div style="font-size:.9rem;color:#b9c6e6">Data da Medição: __DATA_MEDICAO__</div>
+        <div style="margin-top:8px">
+          <span class="diff-chip">Diferença entre passagens: <b>__DELTA_MIN__ min</b></span>
+        </div>
       </div>
     </div>
 
@@ -315,6 +359,9 @@ table.minimal th{color:#9fb0d4;font-weight:700}
           <div class="block">
             <div class="title">Satélite RGB</div>
             <div class="body" style="padding:0">
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem;border-bottom:1px solid var(--border)">
+                Data/Hora de Aquisição: __RGB_DT__
+              </div>
               <img src="__IMG_RGB__" alt="RGB" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/>
               <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">Imagem de referência visual (plataforma/embarcações)</div>
             </div>
@@ -322,8 +369,11 @@ table.minimal th{color:#9fb0d4;font-weight:700}
           <div class="block">
             <div class="title">Satélite SWIR (CH₄)</div>
             <div class="body" style="padding:0;position:relative">
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem;border-bottom:1px solid var(--border)">
+                Data/Hora de Aquisição: __SWIR_DT__
+              </div>
               <img src="__IMG_SWIR__" alt="SWIR" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/>
-              <div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">
+              <div style="position:absolute;right:8px;top:48px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">
                 0 – __CB_MAX__ ppb
               </div>
               <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem">Realce SWIR/CH₄ com escala qualitativa (EABB)</div>
@@ -464,13 +514,14 @@ html = (html
   .replace("__MET_ROWS__", met_rows)
   .replace("__IMG_RGB_STYLE__", img_rgb_style)
   .replace("__IMG_SWIR_STYLE__", img_swir_style)
+  .replace("__RGB_DT__", rgb_dt_human)
+  .replace("__SWIR_DT__", swir_dt_human)
+  .replace("__DELTA_MIN__", delta_min)
 )
 
-# inserir as imagens do split (ou placeholders se faltarem)
+# imagens do split (ou placeholders)
 img_left_html  = f"<img src='{left_uri}' alt='Left'/>"  if left_uri  else "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9fb0d4'>left.png</div>"
 img_right_html = f"<img src='{right_uri}' alt='Right'/>" if right_uri else "<div style='width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9fb0d4'>right.png</div>"
-
 html = html.replace("__IMG_LEFT__", img_left_html).replace("__IMG_RIGHT__", img_right_html)
 
 components.html(html, height=1000, scrolling=False)
-
