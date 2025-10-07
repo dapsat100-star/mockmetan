@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-# DAP ATLAS — Sidebar (OGMP 2.0 L5 • Metano) — versão sem f-string (sem conflitos de { }).
+# DAP ATLAS — Sidebar (OGMP 2.0 L5 • Metano) — KPIs + Unidade/Data + Aba de Próximos Passes
+# Export: S = SVG, P = PDF
 
 from datetime import datetime
 from base64 import b64encode
@@ -25,20 +26,26 @@ logo_uri = ""
 p = Path("dapatlas_fundo_branco.png")
 if p.exists() and p.stat().st_size > 0:
     logo_uri = "data:image/png;base64," + b64encode(p.read_bytes()).decode("ascii")
-logo_html = f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>" if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
+logo_html = (
+    f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>"
+    if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
+)
 
-# =============== DADOS MOCK ===============
-sites = ["Site1", "Site2", "Site3"]
-default_date = "2025-03-12"
-meses = ["Jan","Fev","Mar","Abr","Mai","Jun"]
-emissoes = [120,150,130,170,160,180]  # kg CH4/h (mock)
-acumulado_ton = 150
+# =============== DADOS (mock) ===============
+unidade         = "Rio de Janeiro"
+data_medicao    = "12/07/2025 — 10:42 (UTC)"   # exemplo inventado
+rate_kgph       = 180                          # kg CH4/h
+uncert_pct      = 10                           # %
 
-# opções do select (HTML)
-sites_options_html = "".join(f"<option>{s}</option>" for s in sites)
+# Próximos passes (exemplo)
+passes = [
+    ("GHGSat-C10", "13/07/2025 – 09:12", "52°"),
+    ("GHGSat-C12", "14/07/2025 – 10:03", "47°"),
+    ("GHGSat-C11", "15/07/2025 – 08:55", "49°"),
+]
 
-# ================= HTML COM PLACEHOLDERS =================
-html = """
+# =============== HTML com PLACEHOLDERS (sem f-string) ===============
+html = r"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -71,46 +78,42 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 
 .hr{height:1px;background:var(--border);margin:6px 0 10px 0}
 
-/* Controls row */
-.controls{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
-.ctrl label{display:block;font-size:.85rem;color:#cdd6f5;margin:0 0 6px}
-.ctrl input[type=date], .ctrl select{width:100%;background:#0e172b;border:1px solid var(--border);border-radius:10px;color:#e6eefc;padding:10px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 14px;border-radius:10px;
-     font-weight:800;text-decoration:none;background:var(--primary);color:#05131a;border:1px solid rgba(0,0,0,.25)}
-
-/* Section blocks */
 .block{border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
 .block .body{padding:10px}
 
-/* Imagery */
-.mapbox{height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:10px;background:
-  linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));display:flex;align-items:center;justify-content:center;color:#a9b8df}
-.mapthumb{height:160px;border-radius:10px;overflow:hidden;margin-top:10px;background:#0f1a2e;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#9fb0d4}
-.caption{font-size:.85rem;color:#a9b8df;margin-top:6px;text-align:left}
+/* KPIs */
+.kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kpi{
+  background:rgba(255,255,255,.04); border:1px solid var(--border);
+  border-radius:12px; padding:14px 12px; text-align:center
+}
+.kpi .label{color:#b9c6e6;font-size:.9rem;margin-bottom:4px}
+.kpi .value{font-weight:900;font-size:1.6rem;color:#ffffff;line-height:1}
+.kpi .unit{font-size:.95rem;color:#cbd6f2;margin-left:4px}
 
-/* Measurements */
-.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.kcard{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.kcard .khead{background:#0f1a2e;color:#e6eefc;padding:8px 10px;font-weight:800}
-.krows{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.krows>div{padding:8px 10px;border-top:1px solid var(--border)}
-.krows>div:nth-child(odd){border-right:1px solid var(--border)}
-.krows label{display:block;font-size:.85rem;color:#b9c6e6;margin-bottom:4px}
-.krows input{width:100%;padding:8px 10px;border-radius:8px;background:#0e172b;border:1px solid var(--border);color:#e6eefc}
+/* Tabs */
+.tabs{margin-top:4px}
+.tabs input{display:none}
+.tabs label{
+  display:inline-block; padding:8px 12px; margin-right:8px; border:1px solid var(--border);
+  border-bottom:none; border-top-left-radius:10px; border-top-right-radius:10px;
+  color:var(--muted); background:rgba(255,255,255,.02); cursor:pointer; font-weight:700; font-size:.92rem
+}
+.tabs input:checked + label{color:#08121f; background:var(--primary); border-color:var(--primary)}
+.tab-content{border:1px solid var(--border); border-radius:0 12px 12px 12px; padding:12px; margin-top:-1px}
 
-/* Histórico */
-.hist .accum{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:8px}
-.hist .accum input{width:160px;text-align:center;background:#0e172b;border:1px solid var(--border);color:#e6eefc;border-radius:8px;padding:8px}
-.chart{height:220px;border:1px solid var(--border);border-radius:10px;background:#0f1a2e;display:flex;align-items:center;justify-content:center;position:relative}
-.chart svg{width:95%;height:85%}
-.chart .ylabel{position:absolute;left:8px;top:6px;color:#cbd6f2;font-size:.85rem;transform:rotate(-90deg);transform-origin:left top}
-.chart .xlabel{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);color:#cbd6f2;font-size:.85rem}
+table.minimal{width:100%;border-collapse:collapse}
+table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
+table.minimal th{color:#9fb0d4;font-weight:700}
+
+.footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
 </style>
 </head>
 <body>
 <div class="stage">
   <div class="side-panel" id="panel">
+
     <!-- HEADER -->
     <div class="header">
       <div class="brand">
@@ -124,115 +127,72 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
     </div>
     <div class="hr"></div>
 
-    <!-- CONTROLS -->
-    <div class="controls">
-      <div class="ctrl">
-        <label>Data da Medição por Satélite de Metano</label>
-        <input id="inp-date" type="date" value="__DEFAULT_DATE__"/>
-      </div>
-      <div class="ctrl">
-        <label>Site</label>
-        <select id="inp-site">__SITES_OPTIONS__</select>
-      </div>
-      <div class="ctrl">
-        <label>&nbsp;</label>
-        <a class="btn" href="#" onclick="exportPDF();return false;">GERAR PDF ➜</a>
-      </div>
-    </div>
-
-    <!-- IMAGERY -->
+    <!-- Unidade + Data -->
     <div class="block">
-      <div class="title">Imagery</div>
-      <div class="body">
-        <div class="mapbox">Mini-mapa / Mosaic (placeholder)</div>
-        <div class="mapthumb">Thumb de satélite do passe</div>
-        <div class="caption">25 de Fevereiro de 2025 — 11h42 (hora local)</div>
+      <div class="body" style="padding:10px 12px">
+        <div style="font-weight:800;font-size:1rem;margin-bottom:4px">Unidade: __UNIDADE__</div>
+        <div style="font-size:.9rem;color:#b9c6e6">Data da Medição: __DATA_MEDICAO__</div>
       </div>
     </div>
 
-    <!-- MEASUREMENTS -->
-    <div class="block">
-      <div class="title">Measurements</div>
-      <div class="body kgrid">
-        <!-- Velocidade -->
-        <div class="kcard">
-          <div class="khead">Velocidade do Vento no momento da aquisição (m/s)</div>
-          <div class="krows">
-            <div>
-              <label>ECMWF</label>
-              <input id="vel-ecmwf" type="number" value="12" step="0.1"/>
-            </div>
-            <div>
-              <label>Medição Local</label>
-              <input id="vel-local" type="number" value="12" step="0.1"/>
-            </div>
+    <!-- TABS -->
+    <div class="tabs">
+      <input type="radio" name="tab" id="tab-medicao" checked>
+      <label for="tab-medicao">Medição Atual</label>
+
+      <input type="radio" name="tab" id="tab-passes">
+      <label for="tab-passes">Próximos Passes</label>
+
+      <input type="radio" name="tab" id="tab-meta">
+      <label for="tab-meta">Metadados</label>
+
+      <input type="radio" name="tab" id="tab-resumo">
+      <label for="tab-resumo">Resumo</label>
+
+      <!-- Medição Atual (KPIs) -->
+      <div class="tab-content" id="content-medicao">
+        <div class="kpi2">
+          <div class="kpi">
+            <div class="label">Taxa</div>
+            <div><span class="value">__RATE__</span><span class="unit">kg CH₄/h</span></div>
           </div>
-        </div>
-        <!-- Direção -->
-        <div class="kcard">
-          <div class="khead">Direção do Vento no momento da aquisição (°)</div>
-          <div class="krows">
-            <div>
-              <label>ECMWF</label>
-              <input id="dir-ecmwf" type="number" value="320" step="1"/>
-            </div>
-            <div>
-              <label>Medição Local</label>
-              <input id="dir-local" type="number" value="315" step="1"/>
-            </div>
-          </div>
-        </div>
-        <!-- Concentração -->
-        <div class="kcard">
-          <div class="khead">Concentração de Metano (kg/h)</div>
-          <div class="krows">
-            <div>
-              <label>ECMWF</label>
-              <input id="conc-ecmwf" type="number" value="12" step="0.1"/>
-            </div>
-            <div>
-              <label>Medição Local</label>
-              <input id="conc-local" type="number" value="12" step="0.1"/>
-            </div>
-          </div>
-        </div>
-        <!-- Erro Máximo -->
-        <div class="kcard">
-          <div class="khead">Erro Máximo de Medição (%)</div>
-          <div class="krows">
-            <div>
-              <label>ECMWF</label>
-              <input id="err-ecmwf" type="number" value="2" step="0.1"/>
-            </div>
-            <div>
-              <label>Medição Local</label>
-              <input id="err-local" type="number" value="1.3" step="0.1"/>
-            </div>
+          <div class="kpi">
+            <div class="label">Incerteza de Medição</div>
+            <div><span class="value">__UNC__</span><span class="unit">%</span></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- HISTÓRICO -->
-    <div class="block hist">
-      <div class="title">Informações Históricas sobre o Site</div>
-      <div class="body">
-        <div class="accum">
-          <div style="font-weight:800">Acumulado emitido até a data de medição (ton)</div>
-          <input id="accum" type="number" value="__ACUMULADO__" step="1"/>
-        </div>
-        <div class="chart">
-          <div class="ylabel">Emissão (kg CH₄/h)</div>
-          <div class="xlabel">Mês</div>
-          <svg id="chart"></svg>
-        </div>
+      <!-- Próximos Passes -->
+      <div class="tab-content" id="content-passes" style="display:none">
+        <div class="section-title" style="font-weight:800;margin:2px 0 8px">Previsão de Passes</div>
+        <table class="minimal">
+          <thead><tr><th>Satélite</th><th>Data/Hora (UTC)</th><th>Ângulo</th></tr></thead>
+          <tbody>
+            __PASSES_ROWS__
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Metadados -->
+      <div class="tab-content" id="content-meta" style="display:none">
+        <table class="minimal">
+          <tr><th>Gerado em</th><td>__AGORA__</td></tr>
+          <tr><th>Sistema</th><td>DAP ATLAS — OGMP 2.0</td></tr>
+        </table>
+      </div>
+
+      <!-- Resumo -->
+      <div class="tab-content" id="content-resumo" style="display:none">
+        <p>Relatório OGMP 2.0 (Nível 5) com KPIs de emissão instantânea e incerteza. Dados fictícios para demonstração.</p>
       </div>
     </div>
 
-    <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem">
+    <div class="footer">
       <div>© __YEAR__ MAVIPE Sistemas Espaciais</div>
-      <div>DAP ATLAS</div>
+      <div>Atalhos: S = SVG • P = PDF</div>
     </div>
+
   </div>
 </div>
 
@@ -242,67 +202,30 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js"></script>
 
 <script>
-// ====== Gráfico simples (SVG) ======
-const meses   = __MESES__;
-const valores = __EMISSOES__;
+// Troca das abas
+const elMed  = document.getElementById('content-medicao');
+const elPass = document.getElementById('content-passes');
+const elMeta = document.getElementById('content-meta');
+const elRes  = document.getElementById('content-resumo');
 
-// desenha linha com eixos simples
-(function draw(){
-  const svg = document.getElementById('chart');
-  const W = svg.clientWidth || 480, H = svg.clientHeight || 200;
-  const pad = 22;
-  const minV = Math.min(...valores)*0.95, maxV = Math.max(...valores)*1.05;
+function show(which){
+  elMed.style.display  = (which==='med') ? 'block' : 'none';
+  elPass.style.display = (which==='pas') ? 'block' : 'none';
+  elMeta.style.display = (which==='met') ? 'block' : 'none';
+  elRes.style.display  = (which==='res') ? 'block' : 'none';
+}
+document.getElementById('tab-medicao').onchange = ()=>show('med');
+document.getElementById('tab-passes').onchange  = ()=>show('pas');
+document.getElementById('tab-meta').onchange    = ()=>show('met');
+document.getElementById('tab-resumo').onchange  = ()=>show('res');
 
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.innerHTML = '';
-
-  // eixo X
-  for(let i=0;i<meses.length;i++){
-    const x = pad + i*( (W-pad*2)/(meses.length-1) );
-    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x', x); t.setAttribute('y', H-6);
-    t.setAttribute('text-anchor','middle'); t.setAttribute('font-size','11');
-    t.setAttribute('fill','#cbd6f2'); t.textContent = meses[i];
-    svg.appendChild(t);
-  }
-
-  // escala Y
-  function y(v){ return H-pad - ( (v-minV)/(maxV-minV) )*(H-pad*2); }
-  function x(i){ return pad + i*( (W-pad*2)/(meses.length-1) ); }
-
-  // grid horizontal
-  for(let g=0; g<4; g++){
-    const gy = pad + g*((H-pad*2)/3);
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', pad); line.setAttribute('x2', W-pad);
-    line.setAttribute('y1', gy);  line.setAttribute('y2', gy);
-    line.setAttribute('stroke','rgba(255,255,255,.12)'); line.setAttribute('stroke-width','1');
-    svg.appendChild(line);
-  }
-
-  // polyline
-  const pts = valores.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
-  const pl = document.createElementNS('http://www.w3.org/2000/svg','polyline');
-  pl.setAttribute('points', pts);
-  pl.setAttribute('fill','none'); pl.setAttribute('stroke','#4EA8DE'); pl.setAttribute('stroke-width','3');
-  svg.appendChild(pl);
-
-  // pontos
-  valores.forEach((v,i)=>{
-    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx', x(i)); c.setAttribute('cy', y(v)); c.setAttribute('r','4');
-    c.setAttribute('fill','#FFD166'); svg.appendChild(c);
-  });
-})();
-
-// ====== Exportação do painel ======
+// Exportação do painel
 const PANEL = document.getElementById('panel');
 
 async function exportSVG(){
   const dataUrl = await domtoimage.toSvg(PANEL, { bgcolor: '__CARD__', quality: 1 });
   const a = document.createElement('a'); a.href = dataUrl; a.download = 'OGMP_L5_Sidebar.svg'; a.click();
 }
-
 async function exportPDF(){
   const svgUrl  = await domtoimage.toSvg(PANEL, { bgcolor: '__CARD__', quality: 1 });
   const svgText = await (await fetch(svgUrl)).text();
@@ -320,7 +243,7 @@ async function exportPDF(){
   const scale = Math.min(pageW/width, pageH/height);
 
   window.svg2pdf(svgEl, pdf, {
-    x:(pageW-width*scale)/2, y:(pageH-height*scale)/2, scale:scale
+    x:(pageW-width*scale)/2, y:(pageH-height*scale)/2, scale: scale
   });
   pdf.save('OGMP_L5_Sidebar.pdf');
 }
@@ -334,23 +257,28 @@ document.addEventListener('keydown', (e)=>{
 </body></html>
 """
 
-# ====== SUBSTITUIÇÕES SEGURAS (sem f-string) ======
+# ----- monta linhas da tabela de passes -----
+rows = "\n".join(f"<tr><td>{sat}</td><td>{dt}</td><td>{ang}</td></tr>" for sat, dt, ang in passes)
+
+# ----- substituições seguras -----
 html = (html
-    .replace("__PANEL_W__", str(PANEL_W_PX))
-    .replace("__PANEL_GAP__", str(PANEL_GAP_PX))
-    .replace("__PRIMARY__", PRIMARY)
-    .replace("__BG__", BG_DARK)
-    .replace("__CARD__", CARD_DARK)
-    .replace("__TEXT__", TEXT)
-    .replace("__MUTED__", MUTED)
-    .replace("__BORDER__", BORDER)
-    .replace("__LOGO_HTML__", logo_html)
-    .replace("__DEFAULT_DATE__", default_date)
-    .replace("__SITES_OPTIONS__", sites_options_html)
-    .replace("__ACUMULADO__", str(acumulado_ton))
-    .replace("__YEAR__", str(datetime.now().year))
-    .replace("__MESES__", str(meses))
-    .replace("__EMISSOES__", str(emissoes))
+  .replace("__PANEL_W__", str(PANEL_W_PX))
+  .replace("__PANEL_GAP__", str(PANEL_GAP_PX))
+  .replace("__PRIMARY__", PRIMARY)
+  .replace("__BG__", BG_DARK)
+  .replace("__CARD__", CARD_DARK)
+  .replace("__TEXT__", TEXT)
+  .replace("__MUTED__", MUTED)
+  .replace("__BORDER__", BORDER)
+  .replace("__LOGO_HTML__", logo_html)
+  .replace("__UNIDADE__", unidade)
+  .replace("__DATA_MEDICAO__", data_medicao)
+  .replace("__RATE__", str(rate_kgph))
+  .replace("__UNC__", str(uncert_pct))
+  .replace("__PASSES_ROWS__", rows)
+  .replace("__AGORA__", datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"))
+  .replace("__YEAR__", str(datetime.now().year))
 )
 
 components.html(html, height=980, scrolling=False)
+
