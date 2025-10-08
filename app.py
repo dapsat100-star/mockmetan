@@ -114,7 +114,7 @@ swir_rows = f"""
 rgb_rows = f"""
 <tr><th>Estado do Mar</th><td>{M.get('estado_mar','Calmo')}</td></tr>
 <tr><th>Plataforma</th><td>{M.get('plataforma','FPSO')}</td></tr>
-<tr><th>Objetos Detectados</th><td>{', '.join(M.get('objetos_detectados', ['Possível flotel']))}</td></tr>
+<tr><th>Objetos Detectados</th><td>{', '.join(M.get('objetos_detectados', ['Boias e Estruturas Auxiliares']))}</td></tr>
 <tr><th>Flare Ativo</th><td>{'Sim' if M.get('flare_ativo', True) else 'Não'}</td></tr>
 """
 met_rows = f"""
