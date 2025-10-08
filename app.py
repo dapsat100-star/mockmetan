@@ -49,7 +49,7 @@ img_uri = as_data_uri(fig_path) if fig_path else ""
 
 # ===================== DADOS MOCK / JSON =====================
 # ===================== DADOS MOCK / JSON =====================
-# unidade        = "XPTO"
+ unidade        = "XPTO"
 data_medicao_iso = "2025-04-29T10:36:00Z"
 data_medicao   = fmt_dt_iso(data_medicao_iso)
 hora_local     = "10h36"
