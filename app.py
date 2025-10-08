@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
-# Duas imagens lado a lado (ou imagem única split) com chips de hora,
-# e "truque" de foco + zoom estético por CSS (sem editar as imagens).
-# Todos os horários exibidos como "(Hora Local)".
+# Suporta: 1) imagem única já dividida (split_combo.png) com chips de horário
+#          2) fallback para duas imagens (left.png / right.png) — agora também com chips
+# Todos os horários são exibidos como "(Hora Local)".
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -17,20 +17,16 @@ st.set_page_config(page_title="DAP ATLAS — OGMP 2.0 L5", page_icon="🛰️", 
 PRIMARY, BG, CARD, TEXT, MUTED, BORDER = "#00E3A5", "#0b1221", "#10182b", "#FFFFFF", "#9fb0c9", "rgba(255,255,255,.10)"
 PANEL_W_PX, PANEL_GAP_PX = 560, 24
 
-# ===== Parâmetros de foco/zoom (ajuste aqui para “embelezar” as imagens)
-# foco em porcentagem do quadro (0% = esquerda/topo, 100% = direita/base)
-LEFT_FOCUS_X, LEFT_FOCUS_Y   = 50, 65   # RGB
-RIGHT_FOCUS_X, RIGHT_FOCUS_Y = 50, 45   # SWIR
-LEFT_ZOOM, RIGHT_ZOOM        = 1.18, 1.22
-
 def as_data_uri(path: Path) -> str:
     return "data:image/" + path.suffix.lstrip(".") + ";base64," + b64encode(path.read_bytes()).decode("ascii")
 
 def fmt_dt_iso(iso: str) -> str:
+    # Mantemos a conversão, mas rotulamos como Hora Local (mock)
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
         return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
     except Exception:
+        # Se já vier human-readable, apenas troca "UTC" -> "Hora Local"
         return iso.replace("UTC", "Hora Local")
 
 def diff_minutes(a: str, b: str) -> int | None:
@@ -56,6 +52,10 @@ left_path, right_path = Path("left.png"), Path("right.png")
 left_uri  = as_data_uri(left_path)  if not combined_uri and left_path.exists()  and left_path.stat().st_size>0  else ""
 right_uri = as_data_uri(right_path) if not combined_uri and right_path.exists() and right_path.stat().st_size>0 else ""
 
+# ===== Foco/zoom (para duas imagens). Ex.: "center 60%" empurra foco mais para baixo
+LEFT_FOCUS  = "center 60%"
+RIGHT_FOCUS = "center 45%"
+
 # ===== Dados padrão
 unidade      = "Rio de Janeiro"
 data_medicao = "12/07/2025 — 10:42 (Hora Local)"
@@ -68,13 +68,13 @@ passes       = [{"sat":"GHGSat-C10","t":"13/07/2025 – 09:12 (Hora Local)","ang
 img_rgb, img_swir = "", ""
 cb_max = 1000
 
-# Horários (chips)
+# Horários das metades (chips)
 rgb_iso  = "2025-04-29T08:06:00Z"
 swir_iso = "2025-04-29T10:36:00Z"
 rgb_h, swir_h = fmt_dt_iso(rgb_iso), fmt_dt_iso(swir_iso)
 delta_min = diff_minutes(rgb_iso, swir_iso) or 0
 
-# ===== JSON opcional
+# ===== Carrega JSON opcional (mesmo schema anterior)
 M = {}
 mfile = Path("sample_measurement.json")
 if mfile.exists() and mfile.stat().st_size>0:
@@ -97,7 +97,9 @@ if M:
     rgb_h, swir_h = fmt_dt_iso(rgb_iso), fmt_dt_iso(swir_iso)
     delta_min    = diff_minutes(rgb_iso, swir_iso) or delta_min
 
-def as_local_str(s: str) -> str: return s.replace("UTC","Hora Local")
+# Tabela de passes (garante Hora Local)
+def as_local_str(s: str) -> str:
+    return s.replace("UTC","Hora Local")
 
 passes_rows = "\n".join(
     f"<tr><td>{p.get('sat','-')}</td><td>{as_local_str(p.get('t','-'))}</td><td>{p.get('ang','-')}</td></tr>"
@@ -151,28 +153,68 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .split-one{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0e1629}
 .split-one img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
 .split-one::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
-
-/* Chips */
 .chip{
   position:absolute; top:10px; padding:8px 12px; border-radius:999px; font-size:.9rem; font-weight:800;
-  color:#e9f2ff; background:rgba(15,26,46,.72); border:1px solid rgba(255,255,255,.16); backdrop-filter:saturate(130%) blur(3px)
+  color:#e9f2ff; background:rgba(15,26,46,.72); border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:saturate(130%) blur(3px)
 }
 .chip.left{left:10px}
 .chip.right{right:10px}
 
-/* MODO 2 (duas imagens) — com truque de foco+zoom */
+/* MODO 2 (fallback): duas células */
 .split-grid{height:100%; width:100%; display:grid; grid-template-columns:1fr 1fr; gap:0; position:relative}
 .split-grid .cell{position:relative; overflow:hidden; background:#0e1629; display:flex; align-items:center; justify-content:center}
+.split-grid img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
 .split-grid::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
-.img-tune{
-  /* base: caber por altura, depois escalamos */
-  height:86%; width:auto; max-width:none; display:block; object-fit:contain;
-  /* os três abaixo vêm por inline style via CSS vars */
-  transform: scale(var(--z,1));
-  transform-origin: var(--ox,50%) var(--oy,50%);
-  object-position: var(--ox,50%) var(--oy,50%);
-  transition: transform .25s ease, object-position .25s ease;
+
+/* ===== Painel lateral ===== */
+.side-panel{
+  position:absolute; top:var(--gap); right:var(--gap); bottom:var(--gap);
+  width:var(--panel-w); background:var(--card); border:1px solid var(--border);
+  border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.45);
+  padding:14px; display:flex; flex-direction:column; gap:12px; overflow:auto;
+  backdrop-filter:saturate(140%) blur(6px);
 }
+/* Header */
+.header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.brand{display:flex;gap:12px;align-items:center}
+.brand .logo{width:82px;height:82px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
+.brand .txt .name{font-weight:900;letter-spacing:.2px}
+.brand .txt .sub{font-size:.86rem;color:var(--muted)}
+.badge{justify-self:end;background:rgba(0,227,165,.12);color:var(--primary);border:1px solid rgba(0,227,165,.25);
+  padding:6px 10px;border-radius:999px;font-weight:700;font-size:.85rem;white-space:nowrap}
+.hr{height:1px;background:var(--border);margin:6px 0 10px 0}
+.block{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.4)}
+.block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
+.block .body{padding:10px}
+/* KPIs */
+.kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kpi{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;position:relative}
+.kpi .label{color:#b9c6e6;font-size:.9rem;margin-bottom:4px}
+.kpi .value{font-weight:900;font-size:1.6rem}
+.kpi .unit{font-size:.95rem;color:#cbd6f2;margin-left:4px}
+.spark{width:100%;height:20px;margin-top:6px}
+.badge-pos,.badge-neg{display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;font-weight:800;font-size:.8rem}
+.badge-pos{background:rgba(52,211,153,.16);color:#34d399;border:1px solid rgba(52,211,153,.35)}
+.badge-neg{background:rgba(248,113,113,.16);color:#f87171;border:1px solid rgba(248,113,113,.35)}
+.gbox{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px}
+.gauge{width:72px;height:72px}
+.gauge .bg{fill:none;stroke:rgba(255,255,255,.15);stroke-width:6}
+.gauge .val{fill:none;stroke:#34D399;stroke-width:6;transform:rotate(-90deg);transform-origin:50% 50%}
+/* Tabs */
+.tabs{margin-top:4px}
+.tabs input{display:none}
+.tabs label{display:inline-block;padding:8px 12px;margin-right:8px;border:1px solid var(--border);border-bottom:none;border-top-left-radius:10px;border-top-right-radius:10px;color:#9fb0d4;background:rgba(255,255,255,.02);cursor:pointer;font-weight:700;font-size:.92rem}
+.tabs input:checked + label{color:#08121f;background:var(--primary);border-color:var(--primary)}
+.tab-content{border:1px solid var(--border);border-radius:0 12px 12px 12px;padding:12px;margin-top:-1px}
+table.minimal{width:100%;border-collapse:collapse}
+table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
+table.minimal th{color:#9fb0d4;font-weight:700}
+.mapbox{height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:10px;background:linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));display:flex;align-items:center;justify-content:center;color:#a9b8df}
+.timeline{display:flex;gap:12px;overflow:auto;padding:8px;border:1px solid var(--border);border-radius:10px;background:#0f1a2e;margin-top:10px}
+.badge-pass{min-width:190px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border)}
+.badge-pass b{color:#e6eefc}
+.footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
 </style>
 </head>
 <body>
@@ -304,7 +346,7 @@ const passes=__PASSES_JSON__;
 </body></html>
 """
 
-# ===== bloco visual (com chips em ambos os modos) =====
+# ===== bloco visual injetado (AGORA COM CHIPS EM AMBOS OS MODOS) =====
 if combined_uri:
     combined_block = (
         f"<div class='split-one'>"
@@ -314,12 +356,11 @@ if combined_uri:
         f"</div>"
     )
 else:
-    # duas imagens — com foco/zoom e chips
+    # duas imagens — com foco e chips
     if left_uri:
         left_html = (
             f"<div class='cell'>"
-            f"<img class='img-tune' src='{left_uri}' alt='Left' "
-            f"style='--ox:{LEFT_FOCUS_X}%;--oy:{LEFT_FOCUS_Y}%;--z:{LEFT_ZOOM};'/>"
+            f"<img src='{left_uri}' alt='Left' style='object-position:{LEFT_FOCUS};'/>"
             f"<span class='chip left'>RGB: {fmt_dt_iso(rgb_iso)}</span>"
             f"</div>"
         )
@@ -329,8 +370,7 @@ else:
     if right_uri:
         right_html = (
             f"<div class='cell'>"
-            f"<img class='img-tune' src='{right_uri}' alt='Right' "
-            f"style='--ox:{RIGHT_FOCUS_X}%;--oy:{RIGHT_FOCUS_Y}%;--z:{RIGHT_ZOOM};'/>"
+            f"<img src='{right_uri}' alt='Right' style='object-position:{RIGHT_FOCUS};'/>"
             f"<span class='chip right'>SWIR: {fmt_dt_iso(swir_iso)}</span>"
             f"</div>"
         )
@@ -357,5 +397,4 @@ html = (html
 )
 
 components.html(html, height=1000, scrolling=False)
-
 
