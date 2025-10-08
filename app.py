@@ -372,4 +372,4 @@ html = (html
   .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
 )
 
-components.html(html, height=1000, scrolling=False)
+components.html(html, height=1400, scrolling=False)
