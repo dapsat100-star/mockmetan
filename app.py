@@ -264,7 +264,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
     </div>
 
     <div class="v-footer">
-      Imagem demonstrativa de capacidade utilizando dados reais da GHGSat. Uso exclusivamente ilustrativo.
+      Visualização sintética de exemplo. Não corresponde a dados operacionais ou medições oficiais.
     </div>
   </div>
 
