@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — Mock SaaS (figura única + painel)
-# Toolbar vertical à DIREITA, próxima ao painel lateral.
+# Clean: SEM toolbar/ colorbar + botão PNG 8K no header
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -22,6 +22,7 @@ def as_data_uri(path: Path) -> str:
 def fmt_dt_iso(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
+        # título diz “Hora Local” apenas como label amigável
         return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
     except Exception:
         return iso
@@ -29,7 +30,7 @@ def fmt_dt_iso(iso: str) -> str:
 # ===================== LOGO =====================
 logo_uri = ""
 p_logo = Path("dapatlas_fundo_branco.png")
-if p_logo.exists() and p_logo.stat().st_size>0:
+if p_logo.exists() and p_logo.stat().st_size > 0:
     logo_uri = as_data_uri(p_logo)
 logo_html = (
     f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>"
@@ -43,27 +44,26 @@ candidates = [
     "fig_swir.png", "split_combo.png", "swir.png", "figure.png",
     "WhatsApp Image 2025-10-08 at 1.51.03 AM.jpeg",
 ]
-fig_path = next((p for n in candidates if (p:=Path(n)).exists() and p.stat().st_size>0), None)
+fig_path = next((p for n in candidates if (p := Path(n)).exists() and p.stat().st_size > 0), None)
 img_uri = as_data_uri(fig_path) if fig_path else ""
 
 # ===================== DADOS MOCK / JSON =====================
-unidade      = "XPTO"
+unidade        = "Rio de Janeiro"
 data_medicao_iso = "2025-04-29T10:36:00Z"
-data_medicao = fmt_dt_iso(data_medicao_iso)
-hora_local   = "10h36"
-resolucao_m  = 25
-rate_kgph    = 180
-uncert_pct   = 5
-estado_mar   = "Calmo"
-plataforma   = "FPSO"
-objetos      = ["Equipamentos Auxiliares"]
-flare_ativo  = True
-detec_pluma  = True
-ident_pluma  = True
-dir_vento_graus = 270
-vento_media_ms  = 5.2
-vento_erro_ms   = 2.0
-cb_max = 1000
+data_medicao   = fmt_dt_iso(data_medicao_iso)
+hora_local     = "10h36"
+resolucao_m    = 25
+rate_kgph      = 180
+uncert_pct     = 5
+estado_mar     = "Calmo"
+plataforma     = "FPSO"
+objetos        = ["Equipamentos Auxiliares"]
+flare_ativo    = True
+detec_pluma    = True
+ident_pluma    = True
+dir_vento_graus= 270
+vento_media_ms = 5.2
+vento_erro_ms  = 2.0
 passes = [
     {"sat":"GHGSat-C10","t":"29/04/2025 – 10:36","ang":"52°"},
     {"sat":"GHGSat-C12","t":"30/04/2025 – 10:08","ang":"47°"},
@@ -71,32 +71,37 @@ passes = [
 
 # JSON opcional
 mfile = Path("sample_measurement.json")
-if mfile.exists() and mfile.stat().st_size>0:
-    try: M = json.loads(mfile.read_text(encoding="utf-8"))
-    except: M = {}
+if mfile.exists() and mfile.stat().st_size > 0:
+    try:
+        M = json.loads(mfile.read_text(encoding="utf-8"))
+    except:
+        M = {}
     if M:
         unidade = M.get("unidade", unidade)
         if M.get("data_medicao"):
-            data_medicao_iso = M["data_medicao"]; data_medicao = fmt_dt_iso(data_medicao_iso)
-        rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
-        uncert_pct   = M.get("incerteza_pct", uncert_pct)
-        estado_mar   = M.get("estado_mar", estado_mar)
-        plataforma   = M.get("plataforma", plataforma)
-        objetos      = M.get("objetos_detectados", objetos)
-        flare_ativo  = bool(M.get("flare_ativo", flare_ativo))
-        detec_pluma  = bool(M.get("detec_pluma", detec_pluma))
-        ident_pluma  = bool(M.get("ident_pluma", ident_pluma))
-        dir_vento_graus = M.get("dir_vento_graus", dir_vento_graus)
-        vento_media_ms  = M.get("vento_media_ms", vento_media_ms)
-        vento_erro_ms   = M.get("vento_erro_ms", vento_erro_ms)
-        cb_max          = M.get("colorbar_max_ppb", cb_max)
-        resolucao_m     = M.get("resolucao_m", resolucao_m)
+            data_medicao_iso = M["data_medicao"]
+            data_medicao = fmt_dt_iso(data_medicao_iso)
+        rate_kgph        = M.get("taxa_kgch4_h", rate_kgph)
+        uncert_pct       = M.get("incerteza_pct", uncert_pct)
+        estado_mar       = M.get("estado_mar", estado_mar)
+        plataforma       = M.get("plataforma", plataforma)
+        objetos          = M.get("objetos_detectados", objetos)
+        flare_ativo      = bool(M.get("flare_ativo", flare_ativo))
+        detec_pluma      = bool(M.get("detec_pluma", detec_pluma))
+        ident_pluma      = bool(M.get("ident_pluma", ident_pluma))
+        dir_vento_graus  = M.get("dir_vento_graus", dir_vento_graus)
+        vento_media_ms   = M.get("vento_media_ms", vento_media_ms)
+        vento_erro_ms    = M.get("vento_erro_ms", vento_erro_ms)
+        resolucao_m      = M.get("resolucao_m", resolucao_m)
+        # imagem do JSON (data URI ou caminho local)
         if M.get("img_swir"):
             v = M["img_swir"]
-            if isinstance(v, str) and v.startswith("data:image/"): img_uri = v
+            if isinstance(v, str) and v.startswith("data:image/"):
+                img_uri = v
             else:
                 p = Path(str(v))
-                if p.exists(): img_uri = as_data_uri(p)
+                if p.exists():
+                    img_uri = as_data_uri(p)
 
 # Tabelas painel
 swir_rows = f"""
@@ -142,25 +147,22 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 }
 .v-header{
   background:#1f497d; color:#e8f0ff; padding:8px 12px; font-weight:800; font-size:.92rem;
-  border-bottom:1px solid rgba(255,255,255,.2)
+  border-bottom:1px solid rgba(255,255,255,.2); position:relative;
 }
 .v-body{position:relative; flex:1; background:#0b1327; overflow:hidden}
 .v-body .img-holder{
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  transform-origin:center center; /* zoom/pan */
 }
 .v-body img{max-width:100%; max-height:100%; object-fit:contain; background:#0b1327;}
-.colorbar{
-  position:absolute; right:10px; bottom:12px; width:18px; height:52%;
-  border:1px solid rgba(255,255,255,.3);
-  background: linear-gradient(to top, #2a0845 0%, #00d4ff 40%, #7b2cff 70%, #ff005e 100%);
-  border-radius:6px;
-}
-.cb-label{
-  position:absolute; right:36px; bottom:60px; color:#e6eefc; font-weight:800; letter-spacing:.2px;
-  transform: rotate(-90deg); transform-origin:right bottom; font-size:.8rem; white-space:nowrap;
-}
 .v-footer{padding:8px 10px; color:#b9c6e6; font-size:.82rem; background:#0e172b; border-top:1px solid var(--border)}
+
+/* botão PNG 8K no header da figura */
+.vh-actions{position:absolute; right:10px; top:6px; display:flex; gap:8px}
+.pill{
+  height:30px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
+  background:rgba(0,0,0,.28); color:#fff; font-weight:800; font-size:.82rem; cursor:pointer;
+  backdrop-filter: blur(3px) saturate(130%);
+}
 
 /* ===== Timeline ===== */
 .timeline{
@@ -194,77 +196,28 @@ table.minimal{width:100%;border-collapse:collapse}
 table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
 table.minimal th{color:#9fb0d4;font-weight:700}
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
-
-/* ===== Toolbar flutuante (DIREITA) ===== */
-.toolbar{
-  position:absolute; top:20px;
-  right:calc(var(--panel-w) + var(--gap) + 8px); /* cola na lateral do painel */
-  left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:8px; z-index:30;
-}
-.toolbtn{
-  height:36px; min-width:36px; padding:0 10px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
-  background:rgba(0,0,0,.28); color:#fff; display:flex; align-items:center; gap:8px; cursor:pointer;
-  backdrop-filter: blur(3px) saturate(130%); font-weight:800; font-size:.86rem;
-}
-.toolbtn svg{width:18px;height:18px}
-.badge-pill{
-  position:absolute; top:12px; right:12px; background:rgba(0,227,165,.15); color:#baffdf;
-  border:1px solid rgba(0,227,165,.35); padding:6px 10px; border-radius:999px; font-weight:800; z-index:30;
-}
-
-/* Quando o painel estiver oculto, encosta na borda da figura */
-.hide-panel .toolbar{ right:var(--gap) }
-
-/* Toggle painel escondido */
-.hide-panel .side-panel{display:none}
-.hide-panel .visual-wrap{right:var(--gap)}
-.hide-panel .timeline{right:var(--gap)}
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
 
- 
-
   <!-- FIGURA -->
   <div class="visual-wrap" id="visual">
-    <!-- Toolbar ações -->
-    <div class="toolbar">
-      <button class="toolbtn" id="btnZoomIn"  title="Zoom +">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-5 0A4.5 4.5 0 1 1 15 9.5 4.505 4.505 0 0 1 10.5 14zm1-3h-2v2h-1v-2H6v-1h2V8h1v2h2z"/></svg>Zoom
-      </button>
-      <button class="toolbtn" id="btnZoomOut" title="Zoom −">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19l-4.99-5zM7 10h7v1H7z"/></svg>
-      </button>
-      <button class="toolbtn" id="btnPan" title="Arrastar imagem">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2l2 4h-4l2-4zm0 20l-2-4h4l-2 4zM2 12l4-2v4l-4-2zm20 0l-4 2v-4l4 2zM8 8h8v8H8z"/></svg>Pan
-      </button>
-      <button class="toolbtn" id="btnTogglePanel" title="Mostrar/ocultar painel">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 4h18v16H3V4zm2 2v12h10V6H5zm12 0v12h2V6h-2z"/></svg>Painel
-      </button>
-      <button class="toolbtn" id="btnExportFig" title="Exportar PNG da figura">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M5 20h14v-2H5v2zM5 4v8h4l-5 5-5-5h4V4h2zm14 8V4h-2v8h-4l5 5 5-5h-4z"/></svg>PNG Área
-      </button>
-      <button class="toolbtn" id="btnExportAll" title="Exportar PNG do dashboard">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 5h18v4H3V5zm0 6h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>PNG Dashboard
-      </button>
-      <button class="toolbtn" id="btnInfo" title="Sobre">
-        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M11 17h2v-6h-2v6zm0-8h2V7h-2v2z"/><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>Info
-      </button>
+    <div class="v-header">
+      Satélite CHGSAT – Sensor SWIR
+      <div class="vh-actions">
+        <button id="btnExport8K" class="pill" title="Exportar PNG 8K do dashboard">PNG 8K</button>
+      </div>
     </div>
 
-    <div class="v-header">Satélite CHGSAT – Sensor SWIR</div>
-
     <div class="v-body" id="vbody">
-      <div class="img-holder" id="imgHolder" style="transform:scale(1) translate(0px,0px)">
+      <div class="img-holder" id="imgHolder">
         <img id="theImage" src="__IMG__" alt="figura"/>
       </div>
-      <div class="colorbar"></div>
-      <div class="cb-label">Enhanced Background (ppb) — 0 … __CB_MAX__</div>
     </div>
 
     <div class="v-footer">
-      Visualização sintética de exemplo. Não corresponde a dados operacionais ou medições oficiais.
+      Imagem ilustrativa criada para demonstração de capacidade tecnológica. Não representa medições reais nem está vinculada a contratos, clientes ou operações comerciais.
     </div>
   </div>
 
@@ -323,44 +276,21 @@ const passes=__PASSES_JSON__;
      <small>${(p.t||'-')} • ${(p.ang||'-')}</small></div>`).join('');
 })();
 
-// ========= zoom / pan
-let scale=1, tx=0, ty=0, panning=false, startX=0, startY=0, panEnabled=false;
-const imgHolder = document.getElementById('imgHolder');
-const vbody = document.getElementById('vbody');
-function applyTransform(){ imgHolder.style.transform = `scale(${scale}) translate(${tx}px,${ty}px)`; }
-document.getElementById('btnZoomIn').onclick = ()=>{ scale = Math.min(6, scale*1.2); applyTransform(); }
-document.getElementById('btnZoomOut').onclick= ()=>{ scale = Math.max(0.5, scale/1.2); applyTransform(); }
-document.getElementById('btnPan').onclick    = ()=>{
-  panEnabled = !panEnabled;
-  alert(panEnabled ? 'Arraste com o mouse sobre a imagem para mover.' : 'Pan desativado.');
-};
-vbody.addEventListener('mousedown', (e)=>{ if(!panEnabled) return; panning=true; startX=e.clientX; startY=e.clientY; });
-vbody.addEventListener('mousemove', (e)=>{ if(!panning) return; tx += (e.clientX-startX)/scale; ty += (e.clientY-startY)/scale; startX=e.clientX; startY=e.clientY; applyTransform(); });
-vbody.addEventListener('mouseup', ()=>{ panning=false; });
-vbody.addEventListener('mouseleave', ()=>{ panning=false; });
-
-// ========= toggle painel
-document.getElementById('btnTogglePanel').onclick = ()=>{
-  document.body.classList.toggle('hide-panel');
-};
-
-// ========= exportações
-function exportPNGOf(el, fname){
-  html2canvas(el, {backgroundColor:null, useCORS:true, logging:false, scale:3}).then(canvas=>{
+// ========= exportação PNG 8K (lado maior ~7680 px)
+function exportPNG8K(el, fname){
+  const w = el.clientWidth || 1920, h = el.clientHeight || 1080;
+  const target = 7680;                         // 8K no lado maior
+  const scale = Math.min(8, target / Math.max(w, h)); // limita pra evitar estouro de memória
+  html2canvas(el, {backgroundColor:null, useCORS:true, logging:false, scale: scale}).then(canvas=>{
     canvas.toBlob(function(blob){
       const a=document.createElement('a'); const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-      a.href=URL.createObjectURL(blob); a.download=fname.replace('{ts}', ts).replace('{w}', canvas.width).replace('{h}', canvas.height);
+      a.href=URL.createObjectURL(blob);
+      a.download=fname.replace('{ts}', ts).replace('{w}', canvas.width).replace('{h}', canvas.height);
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
     }, 'image/png');
   });
 }
-document.getElementById('btnExportFig').onclick = ()=> exportPNGOf(document.getElementById('visual'), 'dap-atlas_fig_{ts}_{w}x{h}.png');
-document.getElementById('btnExportAll').onclick = ()=> exportPNGOf(document.getElementById('stage'),  'dap-atlas_app_{ts}_{w}x{h}.png');
-
-// ========= info
-document.getElementById('btnInfo').onclick = ()=>{
-  alert('Mock SaaS DAP ATLAS — toolbar vertical à direita, painel com Aquisição/Resultados/Meteo. Badge: SENSOR SWIR.');
-};
+document.getElementById('btnExport8K')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('stage'), 'dap-atlas_app_8k_{ts}_{w}x{h}.png') );
 </script>
 </body></html>
 """
@@ -373,34 +303,9 @@ html = (html
   .replace("__LOGO_HTML__", logo_html).replace("__UNIDADE__", unidade)
   .replace("__DATA_MED__", data_medicao).replace("__HORA__", hora_local).replace("__RES__", str(resolucao_m))
   .replace("__IMG__", img_uri or "")
-  .replace("__CB_MAX__", str(cb_max))
   .replace("__SWIR_ROWS__", swir_rows).replace("__RGB_ROWS__", rgb_rows).replace("__MET_ROWS__", met_rows)
   .replace("__YEAR__", str(datetime.now().year))
   .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
 )
-# Elimina toolbar e seus estilos
-html = html.replace(
-    '<div class="toolbar">', 
-    '<div style="display:none;">'
-)
-html = html.replace('.toolbar{', '.toolbar{display:none !important;')
-# Remove a colorbar e o rótulo de escala da imagem
-html = html.replace(
-    "</head>",
-    """
-<style>
-  .colorbar, .cb-label {
-    display: none !important;
-  }
-</style>
-</head>
-"""
-)
-
-
-
-
 
 components.html(html, height=1000, scrolling=False)
-
-
