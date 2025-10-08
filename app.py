@@ -185,7 +185,7 @@ html, body{
   border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.45);
   padding:16px; display:flex; flex-direction:column; gap:14px; overflow:auto;
   backdrop-filter:saturate(140%) blur(6px);
-  font-size: 1.3rem;   /* 👈 aumenta toda a fonte do painel lateral */
+  font-size: 1.5rem;   /* 👈 aumenta toda a fonte do painel lateral */
   line-height: 1.5;    /* 👌 deixa o texto mais legível */
 }
 .header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
