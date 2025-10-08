@@ -384,6 +384,18 @@ html = html.replace(
     '<div style="display:none;">'
 )
 html = html.replace('.toolbar{', '.toolbar{display:none !important;')
+# Remove a colorbar e o rótulo de escala da imagem
+html = html.replace(
+    "</head>",
+    """
+<style>
+  .colorbar, .cb-label {
+    display: none !important;
+  }
+</style>
+</head>
+"""
+)
 
 
 
