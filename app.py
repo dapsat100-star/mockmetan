@@ -378,32 +378,32 @@ html = (html
   .replace("__YEAR__", str(datetime.now().year))
   .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
 )
-# Reposicionar toolbar para o canto superior direito, colada ao painel lateral
-# Override definitivo: fixa a toolbar colada à direita (com !important)
+# Override CSS para colar toolbar na lateral direita da figura
 html = html.replace(
     "</head>",
     """
-<style id="toolbar-dock-patch">
-  /* força a dockagem na direita, acima da imagem */
+<style>
+  /* Encosta a toolbar na lateral direita da área visual */
   .toolbar{
     position:absolute !important;
     top:20px !important;
-    left:auto !important;
     right:calc(var(--panel-w) + var(--gap) + 8px) !important;
+    left:auto !important;
     display:flex !important;
     flex-direction:column !important;
     align-items:flex-end !important;
     gap:8px !important;
     z-index:1000 !important;
   }
-  /* quando o painel estiver oculto, encosta na borda da figura */
+  /* Quando o painel está escondido, cola na borda direita da figura */
   .hide-panel .toolbar{
-    right:calc(var(--gap) + 8px) !important;
+    right:var(--gap) !important;
   }
 </style>
 </head>
 """
 )
+
 
 
 
