@@ -265,6 +265,16 @@ table.minimal th{color:#c5d1ec;font-weight:700}
       <div class="badge">SENSOR SWIR</div>
     </div>
     <div class="hr"></div>
+<!-- Bloco Unidade -->
+<div class="block">
+  <div class="title">Unidade</div>
+  <div class="body" style="text-align:center; font-size:1.3rem; font-weight:800; color:#00E3A5;">
+    __UNIDADE__
+  </div>
+</div>
+
+
+    
 
     <!-- Bloco Aquisição -->
     <div class="block"><div class="title">Aquisição</div>
