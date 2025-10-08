@@ -378,6 +378,20 @@ html = (html
   .replace("__YEAR__", str(datetime.now().year))
   .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
 )
+# Reposicionar toolbar para o canto superior direito, colada ao painel lateral
+html = html.replace(
+    ".toolbar{",
+    """.toolbar{
+    top: 20px;
+    left: auto;
+    right: calc(var(--panel-w) + var(--gap) + 8px);
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 1000;
+"""
+)
+
+
 
 components.html(html, height=1000, scrolling=False)
 
