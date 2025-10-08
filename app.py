@@ -165,7 +165,7 @@ html, body{
 .vh-actions{position:absolute; right:10px; top:6px; display:flex; gap:8px}
 .pill{
   height:30px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
-  background:rgba(0,0,0,.28); color:#fff; font-weight:800; font-size:.82rem; cursor:pointer;
+  background:rgba(0,0,0,.28); color:#fff; font-weight:800; font-size:1.5rem; cursor:pointer;
   backdrop-filter: blur(3px) saturate(130%);
 }
 
