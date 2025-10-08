@@ -144,7 +144,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   display:flex; flex-direction:column;
 }
 .v-header{
-  background:#1f497d; color:#e8f0ff; padding:8px 12px; font-weight:800; font-size:.92rem;
+  background:#1f497d; color:#e8f0ff; padding:8px 12px; font-weight:800; font-size:1.5rem;
   border-bottom:1px solid rgba(255,255,255,.2); position:relative;
 }
 .v-body{position:relative; flex:1; background:#0b1327; overflow:hidden}
