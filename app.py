@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
-# Visual 50/50 com duas imagens (ou imagem única), chips de horário e painel lateral.
-# Imagens agora preenchem (object-fit: cover) com foco ajustável via object-position.
+# Suporta: 1) imagem única já dividida (split_combo.png) com chips de horário
+#          2) fallback para duas imagens (left.png / right.png) — agora também com chips
+# Todos os horários são exibidos como "(Hora Local)".
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -12,25 +13,21 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="DAP ATLAS — OGMP 2.0 L5", page_icon="🛰️", layout="wide")
 
-# ===================== CONFIG VISUAL =====================
-PRIMARY, BG, CARD, TEXT, MUTED, BORDER = (
-    "#00E3A5", "#0b1221", "#10182b", "#FFFFFF", "#9fb0c9", "rgba(255,255,255,.10)"
-)
+# ===== Theme
+PRIMARY, BG, CARD, TEXT, MUTED, BORDER = "#00E3A5", "#0b1221", "#10182b", "#FFFFFF", "#9fb0c9", "rgba(255,255,255,.10)"
 PANEL_W_PX, PANEL_GAP_PX = 560, 24
-
-# Ajuste fino de enquadramento (foco) das imagens quando em 2 metades:
-LEFT_FOCUS  = "40% 65%"   # x y  (RGB)   -> mude conforme desejar
-RIGHT_FOCUS = "55% 45%"   # x y  (SWIR)  -> mude conforme desejar
 
 def as_data_uri(path: Path) -> str:
     return "data:image/" + path.suffix.lstrip(".") + ";base64," + b64encode(path.read_bytes()).decode("ascii")
 
 def fmt_dt_iso(iso: str) -> str:
+    # Mantemos a conversão, mas rotulamos como Hora Local (mock)
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-        return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
+        return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
     except Exception:
-        return iso
+        # Se já vier human-readable, apenas troca "UTC" -> "Hora Local"
+        return iso.replace("UTC", "Hora Local")
 
 def diff_minutes(a: str, b: str) -> int | None:
     try:
@@ -40,55 +37,55 @@ def diff_minutes(a: str, b: str) -> int | None:
     except Exception:
         return None
 
-# ===================== LOGO =====================
+# ===== Logo
 logo_uri = ""
 p_logo = Path("dapatlas_fundo_branco.png")
 if p_logo.exists() and p_logo.stat().st_size>0:
     logo_uri = as_data_uri(p_logo)
-logo_html = (
-    f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>"
-    if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
-)
+logo_html = f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>" if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 
-# ===================== VISUAIS (imagens) =====================
-COMBINED_PATH = Path("split_combo.png")  # se existir, usa imagem única
+# ===== Visual — imagens
+COMBINED_PATH = Path("split_combo.png")  # imagem única dividida (opcional)
 combined_uri = as_data_uri(COMBINED_PATH) if COMBINED_PATH.exists() and COMBINED_PATH.stat().st_size>0 else ""
 
 left_path, right_path = Path("left.png"), Path("right.png")
 left_uri  = as_data_uri(left_path)  if not combined_uri and left_path.exists()  and left_path.stat().st_size>0  else ""
 right_uri = as_data_uri(right_path) if not combined_uri and right_path.exists() and right_path.stat().st_size>0 else ""
 
-# ===================== DADOS PADRÃO =====================
+# ===== Foco/zoom (para duas imagens). Ex.: "center 60%" empurra foco mais para baixo
+LEFT_FOCUS  = "center 60%"
+RIGHT_FOCUS = "center 45%"
+
+# ===== Dados padrão
 unidade      = "Rio de Janeiro"
-data_medicao = "12/07/2025 — 10:42 (UTC)"
+data_medicao = "12/07/2025 — 10:42 (Hora Local)"
 rate_kgph    = 180
 uncert_pct   = 10
 spark_hist   = [160,170,150,180,175,182,180]
-passes       = [
-    {"sat":"GHGSat-C10","t":"13/07/2025 – 09:12","ang":"52°"},
-    {"sat":"GHGSat-C12","t":"14/07/2025 – 10:03","ang":"47°"},
-    {"sat":"GHGSat-C11","t":"15/07/2025 – 08:55","ang":"49°"},
-]
+passes       = [{"sat":"GHGSat-C10","t":"13/07/2025 – 09:12 (Hora Local)","ang":"52°"},
+                {"sat":"GHGSat-C12","t":"14/07/2025 – 10:03 (Hora Local)","ang":"47°"},
+                {"sat":"GHGSat-C11","t":"15/07/2025 – 08:55 (Hora Local)","ang":"49°"}]
 img_rgb, img_swir = "", ""
 cb_max = 1000
 
-# Horários de aquisição (chips)
+# Horários das metades (chips)
 rgb_iso  = "2025-04-29T08:06:00Z"
 swir_iso = "2025-04-29T10:36:00Z"
 rgb_h, swir_h = fmt_dt_iso(rgb_iso), fmt_dt_iso(swir_iso)
 delta_min = diff_minutes(rgb_iso, swir_iso) or 0
 
-# ===================== JSON OPCIONAL =====================
+# ===== Carrega JSON opcional (mesmo schema anterior)
 M = {}
 mfile = Path("sample_measurement.json")
 if mfile.exists() and mfile.stat().st_size>0:
-    try: M = json.loads(mfile.read_text(encoding="utf-8"))
-    except: M = {}
+    try:
+        M = json.loads(mfile.read_text(encoding="utf-8"))
+    except:
+        M = {}
 
 if M:
     unidade      = M.get("unidade", unidade)
-    if M.get("data_medicao"):
-        data_medicao = fmt_dt_iso(M["data_medicao"])
+    if M.get("data_medicao"): data_medicao = fmt_dt_iso(M["data_medicao"])
     rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
     uncert_pct   = M.get("incerteza_pct", uncert_pct)
     passes       = M.get("passes", passes)
@@ -100,8 +97,12 @@ if M:
     rgb_h, swir_h = fmt_dt_iso(rgb_iso), fmt_dt_iso(swir_iso)
     delta_min    = diff_minutes(rgb_iso, swir_iso) or delta_min
 
+# Tabela de passes (garante Hora Local)
+def as_local_str(s: str) -> str:
+    return s.replace("UTC","Hora Local")
+
 passes_rows = "\n".join(
-    f"<tr><td>{p.get('sat','-')}</td><td>{p.get('t','-').replace('T',' ').replace('Z',' UTC')}</td><td>{p.get('ang','-')}</td></tr>"
+    f"<tr><td>{p.get('sat','-')}</td><td>{as_local_str(p.get('t','-'))}</td><td>{p.get('ang','-')}</td></tr>"
     for p in passes
 )
 
@@ -124,7 +125,7 @@ met_rows = f"""
 img_rgb_style  = "display:block" if img_rgb else "display:none"
 img_swir_style = "display:block" if img_swir else "display:none"
 
-# ===================== HTML =====================
+# ===== HTML
 html = r"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
@@ -150,26 +151,20 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 
 /* MODO 1: imagem única já dividida */
 .split-one{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0e1629}
-.split-one img{
-  width:100%; height:100%; object-fit:cover; object-position:center; display:block;  /* preenchimento */
-}
+.split-one img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
 .split-one::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
 .chip{
-  position:absolute; top:10px; padding:6px 10px; border-radius:999px; font-size:.8rem; font-weight:700;
-  color:#d7e2ff; background:rgba(15,26,46,.7); border:1px solid rgba(255,255,255,.12);
+  position:absolute; top:10px; padding:8px 12px; border-radius:999px; font-size:.9rem; font-weight:800;
+  color:#e9f2ff; background:rgba(15,26,46,.72); border:1px solid rgba(255,255,255,.16);
   backdrop-filter:saturate(130%) blur(3px)
 }
 .chip.left{left:10px}
 .chip.right{right:10px}
 
-/* MODO 2: duas metades (preenchendo e com foco) */
+/* MODO 2 (fallback): duas células */
 .split-grid{height:100%; width:100%; display:grid; grid-template-columns:1fr 1fr; gap:0; position:relative}
-.split-grid .cell{position:relative; overflow:hidden; background:#0e1629; display:flex; align-items:center; justify-content:center;
-  border-right:1px solid rgba(255,255,255,.06)}
-.split-grid .cell:last-child{border-right:none}
-.split-grid img{
-  width:100%; height:100%; object-fit:cover; object-position:center; display:block;  /* preenchimento */
-}
+.split-grid .cell{position:relative; overflow:hidden; background:#0e1629; display:flex; align-items:center; justify-content:center}
+.split-grid img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
 .split-grid::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
 
 /* ===== Painel lateral ===== */
@@ -192,6 +187,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .block{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.4)}
 .block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
 .block .body{padding:10px}
+/* KPIs */
 .kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .kpi{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;position:relative}
 .kpi .label{color:#b9c6e6;font-size:.9rem;margin-bottom:4px}
@@ -205,6 +201,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .gauge{width:72px;height:72px}
 .gauge .bg{fill:none;stroke:rgba(255,255,255,.15);stroke-width:6}
 .gauge .val{fill:none;stroke:#34D399;stroke-width:6;transform:rotate(-90deg);transform-origin:50% 50%}
+/* Tabs */
 .tabs{margin-top:4px}
 .tabs input{display:none}
 .tabs label{display:inline-block;padding:8px 12px;margin-right:8px;border:1px solid var(--border);border-bottom:none;border-top-left-radius:10px;border-top-right-radius:10px;color:#9fb0d4;background:rgba(255,255,255,.02);cursor:pointer;font-weight:700;font-size:.92rem}
@@ -223,12 +220,12 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 <body>
 <div class="stage">
 
-  <!-- ÁREA VISUAL -->
+  <!-- VISUAL AREA -->
   <div class="split-wrap">
     __COMBINED_OR_GRID__
   </div>
 
-  <!-- PAINEL LATERAL -->
+  <!-- SIDE PANEL -->
   <div class="side-panel" id="panel">
     <div class="header">
       <div class="brand">
@@ -263,25 +260,8 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 
       <div class="tab-content" id="content-medicao">
         <div class="kpi2">
-          <div class="kpi">
-            <div class="label">Taxa</div>
-            <div><span class="value" id="rate-val">__RATE__</span><span class="unit">kg CH₄/h</span>
-              <span id="rate-delta" class="badge-pos" style="display:none"></span>
-            </div>
-            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" id="sp-rate"></svg>
-          </div>
-          <div class="kpi">
-            <div class="label">Incerteza de Medição</div>
-            <div style="display:flex;align-items:center;justify-content:center;gap:6px">
-              <span class="value" id="unc-val">__UNC__</span><span class="unit">%</span>
-            </div>
-            <div class="gbox">
-              <svg viewBox="0 0 42 42" class="gauge">
-                <circle class="bg" cx="21" cy="21" r="16"/>
-                <circle class="val" cx="21" cy="21" r="16" stroke-dasharray="0,100"/>
-              </svg>
-            </div>
-          </div>
+          <div class="kpi"><div class="label">Taxa</div><div><span class="value" id="rate-val">__RATE__</span><span class="unit">kg CH₄/h</span><span id="rate-delta" class="badge-pos" style="display:none"></span></div><svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" id="sp-rate"></svg></div>
+          <div class="kpi"><div class="label">Incerteza de Medição</div><div style="display:flex;align-items:center;justify-content:center;gap:6px"><span class="value" id="unc-val">__UNC__</span><span class="unit">%</span></div><div class="gbox"><svg viewBox="0 0 42 42" class="gauge"><circle class="bg" cx="21" cy="21" r="16"/><circle class="val" cx="21" cy="21" r="16" stroke-dasharray="0,100"/></svg></div></div>
         </div>
       </div>
 
@@ -289,26 +269,16 @@ table.minimal th{color:#9fb0d4;font-weight:700}
         <div id="map-passes" class="mapbox">Mini-mapa de footprints</div>
         <div class="timeline" id="tl"></div>
         <div style="height:10px"></div>
-        <table class="minimal">
-          <thead><tr><th>Satélite</th><th>Data/Hora (UTC)</th><th>Ângulo</th></tr></thead>
-          <tbody>__PASSES_ROWS__</tbody>
-        </table>
+        <table class="minimal"><thead><tr><th>Satélite</th><th>Data/Hora</th><th>Ângulo</th></tr></thead><tbody>__PASSES_ROWS__</tbody></table>
       </div>
 
       <div class="tab-content" id="content-result" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="block"><div class="title">Satélite RGB</div>
-            <div class="body" style="padding:0">
-              <img src="__IMG_RGB__" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/>
-              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __RGB_HUMAN__<br>Imagem de referência visual</div>
-            </div>
+            <div class="body" style="padding:0"><img src="__IMG_RGB__" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/><div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __RGB_HUMAN__<br>Imagem de referência visual</div></div>
           </div>
           <div class="block"><div class="title">Satélite SWIR (CH₄)</div>
-            <div class="body" style="padding:0;position:relative">
-              <img src="__IMG_SWIR__" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/>
-              <div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">0 – __CB_MAX__ ppb</div>
-              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __SWIR_HUMAN__<br>Realce qualitativo (EABB)</div>
-            </div>
+            <div class="body" style="padding:0;position:relative"><img src="__IMG_SWIR__" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/><div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">0 – __CB_MAX__ ppb</div><div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __SWIR_HUMAN__<br>Realce qualitativo (EABB)</div></div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -370,13 +340,13 @@ const passes=__PASSES_JSON__;
     const r=25+Math.min(35,Math.max(0,(ang-30))), col=i%3===0?'#4EA8DE':(i%3===1?'#34d399':'#F59E0B');
     svg+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}20" stroke="${col}"/>`;});
   div.innerHTML=svg+`</svg>`;
-  document.getElementById('tl').innerHTML=passes.map(p=>`<div class="badge-pass"><b>${p.sat}</b><br><small>${p.t} • ${p.ang}</small></div>`).join('');
+  document.getElementById('tl').innerHTML=passes.map(p=>`<div class="badge-pass"><b>${p.sat}</b><br><small>${p.t}</small> • <small>${p.ang}</small></div>`).join('');
 })();
 </script>
 </body></html>
 """
 
-# ===== bloco visual injetado =====
+# ===== bloco visual injetado (AGORA COM CHIPS EM AMBOS OS MODOS) =====
 if combined_uri:
     combined_block = (
         f"<div class='split-one'>"
@@ -386,12 +356,30 @@ if combined_uri:
         f"</div>"
     )
 else:
-    # duas imagens — já com foco (object-position) controlável por LEFT_FOCUS/RIGHT_FOCUS
-    left_html  = f"<img src='{left_uri}'  alt='Left'  style='object-position:{LEFT_FOCUS};'/>"  if left_uri  else "<div style='color:#9fb0d4'>left.png</div>"
-    right_html = f"<img src='{right_uri}' alt='Right' style='object-position:{RIGHT_FOCUS};'/>" if right_uri else "<div style='color:#9fb0d4'>right.png</div>"
-    combined_block = f"<div class='split-grid'><div class='cell'>{left_html}</div><div class='cell'>{right_html}</div></div>"
+    # duas imagens — com foco e chips
+    if left_uri:
+        left_html = (
+            f"<div class='cell'>"
+            f"<img src='{left_uri}' alt='Left' style='object-position:{LEFT_FOCUS};'/>"
+            f"<span class='chip left'>RGB: {fmt_dt_iso(rgb_iso)}</span>"
+            f"</div>"
+        )
+    else:
+        left_html = "<div class='cell' style='color:#9fb0d4'>left.png</div>"
 
-# ===== replace tokens =====
+    if right_uri:
+        right_html = (
+            f"<div class='cell'>"
+            f"<img src='{right_uri}' alt='Right' style='object-position:{RIGHT_FOCUS};'/>"
+            f"<span class='chip right'>SWIR: {fmt_dt_iso(swir_iso)}</span>"
+            f"</div>"
+        )
+    else:
+        right_html = "<div class='cell' style='color:#9fb0d4'>right.png</div>"
+
+    combined_block = f"<div class='split-grid'>{left_html}{right_html}</div>"
+
+# ===== Replace
 html = (html
   .replace("__PANEL_W__", str(PANEL_W_PX)).replace("__PANEL_GAP__", str(PANEL_GAP_PX))
   .replace("__PRIMARY__", PRIMARY).replace("__BG__", BG).replace("__CARD__", CARD)
@@ -400,13 +388,14 @@ html = (html
   .replace("__DATA_MEDICAO__", data_medicao).replace("__DELTA_MIN__", str(delta_min))
   .replace("__RATE__", str(rate_kgph)).replace("__UNC__", str(uncert_pct))
   .replace("__PASSES_ROWS__", passes_rows).replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
-  .replace("__SPARK__", json.dumps(spark_hist)).replace("__AGORA__", datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"))
+  .replace("__SPARK__", json.dumps(spark_hist)).replace("__AGORA__", datetime.utcnow().strftime("%d/%m/%Y %H:%M (Hora Local)"))
   .replace("__YEAR__", str(datetime.now().year)).replace("__IMG_RGB__", img_rgb or "").replace("__IMG_SWIR__", img_swir or "")
   .replace("__CB_MAX__", str(cb_max)).replace("__SWIR_ROWS__", swir_rows).replace("__RGB_ROWS__", rgb_rows)
   .replace("__MET_ROWS__", met_rows).replace("__IMG_RGB_STYLE__", img_rgb_style).replace("__IMG_SWIR_STYLE__", img_swir_style)
-  .replace("__RGB_HUMAN__", fmt_dt_iso(rgb_iso)).replace("__SWIR_HUMAN__", fmt_dt_iso(swir_iso))
+  .replace("__RGB_HUMAN__", rgb_h).replace("__SWIR_HUMAN__", swir_h)
   .replace("__COMBINED_OR_GRID__", combined_block)
 )
 
 components.html(html, height=1000, scrolling=False)
+
 
