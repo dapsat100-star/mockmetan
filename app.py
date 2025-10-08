@@ -142,8 +142,8 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   color:#d7e2ff; background:rgba(15,26,46,.7); border:1px solid rgba(255,255,255,.12);
   backdrop-filter:saturate(130%) blur(3px)
 }
-.chip.left{left:12px}
-.chip.right{right:12px}
+.chip.left{left:15px}
+.chip.right{right:15px}
 
 /* MODO 2 (fallback): duas células */
 .split-grid{height:100%; width:100%; display:grid; grid-template-columns:1fr 1fr; gap:0; position:relative}
