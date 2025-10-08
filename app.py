@@ -51,7 +51,7 @@ right_uri = as_data_uri(Path("right.png")) if not combined_uri and Path("right.p
 
 # ===== Dados padrão
 unidade      = "Rio de Janeiro"
-data_medicao = "12/07/2025 — 10:42 (UTC)"
+data_medicao = "12/07/2025 — 10:42 (Hora Local)"
 rate_kgph    = 180
 uncert_pct   = 10
 spark_hist   = [160,170,150,180,175,182,180]
@@ -88,7 +88,7 @@ if M:
     rgb_h, swir_h = fmt_dt_iso(rgb_iso), fmt_dt_iso(swir_iso)
     delta_min    = diff_minutes(rgb_iso, swir_iso) or delta_min
 
-passes_rows = "\n".join(f"<tr><td>{p.get('sat','-')}</td><td>{p.get('t','-').replace('T',' ').replace('Z',' UTC')}</td><td>{p.get('ang','-')}</td></tr>" for p in passes)
+passes_rows = "\n".join(f"<tr><td>{p.get('sat','-')}</td><td>{p.get('t','-').replace('T',' ').replace('Z',' Hora Local')}</td><td>{p.get('ang','-')}</td></tr>" for p in passes)
 
 swir_rows = f"""
 <tr><th>Detecção da Pluma</th><td>{'Sim' if M.get('detec_pluma', True) else 'Não'}</td></tr>
