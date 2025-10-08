@@ -115,7 +115,7 @@ rgb_rows = f"""
 <tr><th>Flare Ativo</th><td>{'Sim 🟢' if flare_ativo else 'Não ⚪'}</td></tr>
 """
 met_rows = f"""
-<tr><th>Velocidade Média do Vento (m/s)</th><td>{vento_media_ms} ±{vento_erro_ms}</td></tr>
+<tr><th>Velocidade do Vento (m/s)</th><td>{vento_media_ms} ±{vento_erro_ms}</td></tr>
 <tr><th>Direção do Vento (deg)</th><td>{dir_vento_graus} (de onde sopra)</td></tr>
 """
 
