@@ -138,7 +138,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .split-one img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
 .split-one::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
 .chip{
-  position:absolute; top:10px; padding:6px 10px; border-radius:999px; font-size:.8rem; font-weight:700;
+  position:absolute; top:10px; padding:6px 10px; border-radius:999px; font-size:.12rem; font-weight:700;
   color:#d7e2ff; background:rgba(15,26,46,.7); border:1px solid rgba(255,255,255,.12);
   backdrop-filter:saturate(130%) blur(3px)
 }
