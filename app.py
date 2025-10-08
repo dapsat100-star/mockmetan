@@ -22,7 +22,7 @@ def as_data_uri(path: Path) -> str:
 def fmt_dt_iso(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-        return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
+        return dt.strftime("%d/%m/%Y — %H:%M (hora Local)")
     except Exception:
         return iso
 
@@ -56,7 +56,7 @@ rate_kgph    = 180
 uncert_pct   = 12
 estado_mar   = "Calmo"
 plataforma   = "FPSO"
-objetos      = ["Possível flotel"]
+objetos      = ["Equipamentos Auxiliares"]
 flare_ativo  = True
 detec_pluma  = True
 ident_pluma  = True
@@ -291,7 +291,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
     <!-- Bloco Aquisição -->
     <div class="block"><div class="title">Aquisição</div>
       <div class="body"><table class="minimal">
-        <tr><th>Data da Aquisição (UTC)</th><td>__DATA_MED__</td></tr>
+        <tr><th>Data da Aquisição</th><td>__DATA_MED__</td></tr>
         <tr><th>Hora</th><td>__HORA__</td></tr>
         <tr><th>Resolução</th><td>__RES__ m</td></tr>
       </table></div>
