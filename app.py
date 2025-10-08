@@ -382,7 +382,7 @@ html = (html
 html = html.replace(
     ".toolbar{",
     """.toolbar{
-    top: 100px;
+    top: -100px;
     left: 10;
     right: calc(var(--panel-w) + var(--gap) + 8px);
     flex-direction: column;
