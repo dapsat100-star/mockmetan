@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — Mock SaaS (figura única + painel)
-# Clean: SEM toolbar/ colorbar + botão PNG 8K no header
+# PNG 8K (app e figura) + PDF A4/A3 vetorial
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -22,7 +22,6 @@ def as_data_uri(path: Path) -> str:
 def fmt_dt_iso(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-        # título diz “Hora Local” apenas como label amigável
         return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
     except Exception:
         return iso
@@ -48,7 +47,7 @@ fig_path = next((p for n in candidates if (p := Path(n)).exists() and p.stat().s
 img_uri = as_data_uri(fig_path) if fig_path else ""
 
 # ===================== DADOS MOCK / JSON =====================
-unidade        = "XPTO"
+unidade        = "Rio de Janeiro"
 data_medicao_iso = "2025-04-29T10:36:00Z"
 data_medicao   = fmt_dt_iso(data_medicao_iso)
 hora_local     = "10h36"
@@ -93,7 +92,6 @@ if mfile.exists() and mfile.stat().st_size > 0:
         vento_media_ms   = M.get("vento_media_ms", vento_media_ms)
         vento_erro_ms    = M.get("vento_erro_ms", vento_erro_ms)
         resolucao_m      = M.get("resolucao_m", resolucao_m)
-        # imagem do JSON (data URI ou caminho local)
         if M.get("img_swir"):
             v = M["img_swir"]
             if isinstance(v, str) and v.startswith("data:image/"):
@@ -156,7 +154,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .v-body img{max-width:100%; max-height:100%; object-fit:contain; background:#0b1327;}
 .v-footer{padding:8px 10px; color:#b9c6e6; font-size:.82rem; background:#0e172b; border-top:1px solid var(--border)}
 
-/* botão PNG 8K no header da figura */
+/* ações no header da figura */
 .vh-actions{position:absolute; right:10px; top:6px; display:flex; gap:8px}
 .pill{
   height:30px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
@@ -207,6 +205,9 @@ table.minimal th{color:#9fb0d4;font-weight:700}
       Satélite CHGSAT – Sensor SWIR
       <div class="vh-actions">
         <button id="btnExport8K" class="pill" title="Exportar PNG 8K do dashboard">PNG 8K</button>
+        <button id="btnExport8KFig" class="pill" title="Exportar PNG 8K apenas da figura">PNG 8K (Figura)</button>
+        <button id="btnPdfA4" class="pill" title="Exportar PDF A4 (paisagem)">PDF A4</button>
+        <button id="btnPdfA3" class="pill" title="Exportar PDF A3 (paisagem)">PDF A3</button>
       </div>
     </div>
 
@@ -276,21 +277,84 @@ const passes=__PASSES_JSON__;
      <small>${(p.t||'-')} • ${(p.ang||'-')}</small></div>`).join('');
 })();
 
-// ========= exportação PNG 8K (lado maior ~7680 px)
-function exportPNG8K(el, fname){
-  const w = el.clientWidth || 1920, h = el.clientHeight || 1080;
-  const target = 7680;                         // 8K no lado maior
-  const scale = Math.min(8, target / Math.max(w, h)); // limita pra evitar estouro de memória
-  html2canvas(el, {backgroundColor:null, useCORS:true, logging:false, scale: scale}).then(canvas=>{
-    canvas.toBlob(function(blob){
-      const a=document.createElement('a'); const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-      a.href=URL.createObjectURL(blob);
-      a.download=fname.replace('{ts}', ts).replace('{w}', canvas.width).replace('{h}', canvas.height);
-      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
-    }, 'image/png');
-  });
+// ========= PNG 8K (Hi-DPI + zoom-out opcional)
+async function exportPNG8K(el, fname, opts={}){
+  const longSide = opts.longSide || 7680;
+  const capScale = opts.capScale || 6;
+  const zoomOut  = opts.zoomOut  ?? 0.67; // 67% costuma melhorar nitidez
+
+  const rect = el.getBoundingClientRect();
+  const w = Math.max(1, Math.ceil(rect.width));
+  const h = Math.max(1, Math.ceil(rect.height));
+  const base = Math.max(w, h);
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  let scale = Math.min(capScale, (longSide / base) * (dpr > 1 ? dpr : 1));
+
+  const body = document.body;
+  const hasZoom = (typeof body.style.zoom !== 'undefined');
+  const prevZoom = body.style.zoom;
+  if (hasZoom && zoomOut && zoomOut > 0 && zoomOut < 1){
+    body.style.zoom = (zoomOut*100) + '%';
+    await new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
+  }
+
+  try{
+    const canvas = await html2canvas(el, { backgroundColor:null, useCORS:true, logging:false, scale });
+    await new Promise((resolve) => {
+      canvas.toBlob(function(blob){
+        const a=document.createElement('a'); const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        a.href=URL.createObjectURL(blob);
+        a.download=fname.replace('{ts}', ts).replace('{w}', canvas.width).replace('{h}', canvas.height);
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+        resolve();
+      }, 'image/png');
+    });
+  } finally {
+    if (hasZoom) body.style.zoom = prevZoom || '';
+  }
 }
-document.getElementById('btnExport8K')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('stage'), 'dap-atlas_app_8k_{ts}_{w}x{h}.png') );
+document.getElementById('btnExport8K')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('stage'),  'dap-atlas_app_8k_{ts}_{w}x{h}.png', {longSide:7680, capScale:6, zoomOut:0.67}) );
+document.getElementById('btnExport8KFig')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('visual'), 'dap-atlas_fig_8k_{ts}_{w}x{h}.png',  {longSide:7680, capScale:6, zoomOut:0.67}) );
+
+// ======== PDF vetorial via janela de impressão ========
+function printAsPDF(el, {size='A4', orientation='landscape'} = {}){
+  const w = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
+  const stage = el.cloneNode(true);
+
+  // fundo branco suave para impressão
+  stage.style.background = '#ffffff';
+  stage.querySelectorAll('.visual-wrap, .side-panel, .timeline').forEach(n=>{ n.style.boxShadow = 'none'; });
+
+  const css = `
+    <style>
+      @page { size: ${size} ${orientation}; margin: 10mm; }
+      @media print {
+        html, body { background:#fff !important; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        #root { width: 100%; }
+      }
+      #root { display:flex; justify-content:center; }
+      #root > .stage-print { width: 100%; }
+      * { overflow: visible !important; }
+    </style>
+  `;
+
+  w.document.write(`
+    <html>
+      <head><meta charset="utf-8"/>${css}</head>
+      <body>
+        <div id="root"><div class="stage-print"></div></div>
+        <script>
+          setTimeout(()=>{ window.print(); setTimeout(()=>window.close(), 300); }, 250);
+        <\/script>
+      </body>
+    </html>
+  `);
+  w.document.close();
+  w.document.querySelector('.stage-print').appendChild(stage);
+}
+document.getElementById('btnPdfA4')?.addEventListener('click', ()=>{ printAsPDF(document.getElementById('stage'), {size:'A4', orientation:'landscape'}); });
+document.getElementById('btnPdfA3')?.addEventListener('click', ()=>{ printAsPDF(document.getElementById('stage'), {size:'A3', orientation:'landscape'}); });
 </script>
 </body></html>
 """
