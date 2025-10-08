@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# DAP ATLAS — OGMP 2.0 L5 (mock SaaS) — Uma figura + painel direito
-# Agora com: inserção da figura "Screenshot 2025-10-08 114722.png",
-# toolbar flutuante (zoom, pan, info, toggle painel, export PNG da figura e do app).
+# DAP ATLAS — OGMP 2.0 L5 (mock SaaS) — UMA figura + painel direito
+# Inclui: Toolbar flutuante, bloco "Aquisição" no painel, bloco "Ferramentas" no painel,
+# export PNG (figura e dashboard), zoom/pan e toggle do painel.
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -37,10 +37,9 @@ logo_html = (
     if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 )
 
-# ===================== FIGURA =====================
-# prioridade: o arquivo que você enviou; senão, tenta alternativas
+# ===================== FIGURA (autodetect) =====================
 candidates = [
-    "Screenshot 2025-10-08 114722.png",  # <== sua imagem
+    "Screenshot 2025-10-08 114722.png",   # sua imagem
     "Screenshot_2025-10-08_114722.png",
     "fig_swir.png", "split_combo.png", "swir.png", "figure.png",
     "WhatsApp Image 2025-10-08 at 1.51.03 AM.jpeg",
@@ -53,9 +52,10 @@ for name in candidates:
         break
 img_uri = as_data_uri(fig_path) if fig_path else ""
 
-# ===================== DADOS MOCK =====================
+# ===================== DADOS MOCK / JSON =====================
 unidade      = "Rio de Janeiro"
-data_medicao = "29/04/2025 — 10:36 (UTC)"
+data_medicao_iso = "2025-04-29T10:36:00Z"
+data_medicao = fmt_dt_iso(data_medicao_iso)
 hora_local   = "10h36"
 resolucao_m  = 25
 rate_kgph    = 180
@@ -84,7 +84,9 @@ if mfile.exists() and mfile.stat().st_size>0:
     except: M = {}
 if M:
     unidade = M.get("unidade", unidade)
-    if M.get("data_medicao"): data_medicao = fmt_dt_iso(M["data_medicao"])
+    if M.get("data_medicao"):
+        data_medicao_iso = M["data_medicao"]
+        data_medicao = fmt_dt_iso(data_medicao_iso)
     rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
     uncert_pct   = M.get("incerteza_pct", uncert_pct)
     estado_mar   = M.get("estado_mar", estado_mar)
@@ -152,7 +154,6 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   background:#1f497d; color:#e8f0ff; padding:8px 12px; font-weight:800; font-size:.92rem;
   border-bottom:1px solid rgba(255,255,255,.2)
 }
-.v-header small{display:block; opacity:.95; font-weight:600}
 .v-body{position:relative; flex:1; background:#0b1327; overflow:hidden}
 .v-body .img-holder{
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -223,13 +224,22 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 .hide-panel .side-panel{display:none}
 .hide-panel .visual-wrap{right:var(--gap)}
 .hide-panel .timeline{right:var(--gap)}
+
+/* ===== Botões do bloco Ferramentas (no painel) ===== */
+.panel-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.panel-btn{
+  padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.04);color:#eaf2ff;font-weight:800;font-size:.88rem;
+  cursor:pointer;text-align:center
+}
+.panel-btn:hover{background:rgba(255,255,255,.08)}
+.panel-btn.full{grid-column:1 / -1}
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
 
-  <!-- Badge de status -->
-  <div class="badge-pill">Mock • v0.9</div>
+  <div class="badge-pill">Mock • v1.0</div>
 
   <!-- FIGURA -->
   <div class="visual-wrap" id="visual">
@@ -260,7 +270,6 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 
     <div class="v-header">
       Satélite CHGSAT – Sensor SWIR
-      <small>Data da Aquisição: __DATA_MED__ • Hora: __HORA__ • Resolução: __RES__m</small>
     </div>
 
     <div class="v-body" id="vbody">
@@ -295,6 +304,29 @@ table.minimal th{color:#9fb0d4;font-weight:700}
       <div class="badge">DAP ATLAS</div>
     </div>
     <div class="hr"></div>
+
+    <!-- Bloco Aquisição -->
+    <div class="block"><div class="title">Aquisição</div>
+      <div class="body"><table class="minimal">
+        <tr><th>Data da Aquisição (UTC)</th><td>__DATA_MED__</td></tr>
+        <tr><th>Hora</th><td>__HORA__</td></tr>
+        <tr><th>Resolução</th><td>__RES__ m</td></tr>
+      </table></div>
+    </div>
+
+    <!-- Bloco Ferramentas -->
+    <div class="block"><div class="title">Ferramentas</div>
+      <div class="body">
+        <div class="panel-actions">
+          <button class="panel-btn" id="pReset">Reset View</button>
+          <button class="panel-btn" id="pFit">Ajustar à Área</button>
+          <button class="panel-btn" id="pColorbar">Mostrar/Ocultar Colorbar</button>
+          <button class="panel-btn" id="pExportFig">PNG (Figura)</button>
+          <button class="panel-btn" id="pExportApp">PNG (Dashboard)</button>
+          <button class="panel-btn full" id="pCopy">Copiar Figura</button>
+        </div>
+      </div>
+    </div>
 
     <div class="block"><div class="title">Resultados derivados do satélite SWIR</div>
       <div class="body"><table class="minimal">__SWIR_ROWS__</table></div></div>
@@ -343,7 +375,7 @@ document.getElementById('btnTogglePanel').onclick = ()=>{
   document.body.classList.toggle('hide-panel');
 };
 
-// ========= exportações
+// ========= exportações (função helper)
 function exportPNGOf(el, fname){
   html2canvas(el, {backgroundColor:null, useCORS:true, logging:false, scale:3}).then(canvas=>{
     canvas.toBlob(function(blob){
@@ -353,12 +385,77 @@ function exportPNGOf(el, fname){
     }, 'image/png');
   });
 }
+
+// Toolbar export
 document.getElementById('btnExportFig').onclick = ()=> exportPNGOf(document.getElementById('visual'), 'dap-atlas_fig_{ts}_{w}x{h}.png');
 document.getElementById('btnExportAll').onclick = ()=> exportPNGOf(document.getElementById('stage'),  'dap-atlas_app_{ts}_{w}x{h}.png');
 
+// ========= painel: botões Ferramentas
+// estado compartilhado c/ toolbar
+window.__dap_zoom_state = window.__dap_zoom_state || {scale:1, tx:0, ty:0};
+
+function reApplyFromState(){
+  scale = window.__dap_zoom_state.scale;
+  tx    = window.__dap_zoom_state.tx;
+  ty    = window.__dap_zoom_state.ty;
+  applyTransform();
+}
+
+document.getElementById('pReset')?.addEventListener('click', ()=>{
+  window.__dap_zoom_state = {scale:1, tx:0, ty:0}; reApplyFromState();
+});
+
+document.getElementById('pFit')?.addEventListener('click', ()=>{
+  try{
+    const img = document.getElementById('theImage');
+    const visual = document.getElementById('visual');
+    const rect = visual.getBoundingClientRect();
+    const naturalW = img.naturalWidth || img.width;
+    const naturalH = img.naturalHeight || img.height;
+    const fitScale = Math.min(rect.width / naturalW, (rect.height-60) / naturalH);
+    window.__dap_zoom_state = {scale: Math.max(0.5, Math.min(6, fitScale)), tx:0, ty:0}; reApplyFromState();
+  }catch(e){ console.error(e); }
+});
+
+document.getElementById('pColorbar')?.addEventListener('click', ()=>{
+  const cbar = document.querySelector('.colorbar');
+  const lbl  = document.querySelector('.cb-label');
+  if(!cbar) return;
+  cbar.style.display = (cbar.style.display === 'none') ? '' : 'none';
+  if(lbl){ lbl.style.display = (cbar.style.display === 'none') ? 'none' : ''; }
+});
+
+document.getElementById('pExportFig')?.addEventListener('click', ()=>{
+  exportPNGOf(document.getElementById('visual'), 'dap-atlas_fig_{ts}_{w}x{h}.png');
+});
+document.getElementById('pExportApp')?.addEventListener('click', ()=>{
+  exportPNGOf(document.getElementById('stage'),  'dap-atlas_app_{ts}_{w}x{h}.png');
+});
+
+// Copiar figura (clipboard)
+document.getElementById('pCopy')?.addEventListener('click', async ()=>{
+  try{
+    const visual = document.getElementById('visual');
+    const canvas = await html2canvas(visual, {backgroundColor:null, useCORS:true, scale:2});
+    canvas.toBlob(async (blob)=>{
+      try{
+        await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+        alert('Figura copiada para a área de transferência.');
+      }catch(err){
+        console.warn('Clipboard API falhou, baixando arquivo como fallback.');
+        const a=document.createElement('a'); const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        a.href=URL.createObjectURL(blob); a.download=`dap-atlas_fig_${ts}.png`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+      }
+    }, 'image/png');
+  }catch(e){
+    console.error(e); alert('Não foi possível copiar a figura.');
+  }
+});
+
 // ========= info
 document.getElementById('btnInfo').onclick = ()=>{
-  alert('Mock SaaS DAP ATLAS — figura SWIR com toolbar (zoom, pan, toggle painel, export PNG).');
+  alert('Mock SaaS DAP ATLAS — figura SWIR com toolbar + painel com “Aquisição” e “Ferramentas”.');
 };
 </script>
 </body></html>
@@ -378,6 +475,5 @@ html = (html
   .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
 )
 
+# Render
 components.html(html, height=1000, scrolling=False)
-
-
