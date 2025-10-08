@@ -148,7 +148,7 @@ html, body{
   display:flex; flex-direction:column;
 }
 .v-header{
-  background:#1f497d; color:#e8f0ff; padding:10px 12px; font-weight:800; font-size:1.5rem;
+  background:#1f497d; color:#e8f0ff; padding:10px 12px; font-weight:800; font-size:1.8rem;
   border-bottom:1px solid rgba(255,255,255,.2); position:relative;
 }
 .v-body{position:relative; flex:1; background:#0b1327; overflow:hidden}
