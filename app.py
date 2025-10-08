@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# DAP ATLAS — OGMP 2.0 L5 (mock SaaS) — UMA figura + painel direito
-# Alterações: badge = "SENSOR SWIR" e remoção do bloco "Ferramentas".
+# DAP ATLAS — Mock SaaS (figura única + painel)
+# Toolbar vertical à DIREITA, próxima ao painel lateral.
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -43,12 +43,7 @@ candidates = [
     "fig_swir.png", "split_combo.png", "swir.png", "figure.png",
     "WhatsApp Image 2025-10-08 at 1.51.03 AM.jpeg",
 ]
-fig_path = None
-for name in candidates:
-    p = Path(name)
-    if p.exists() and p.stat().st_size > 0:
-        fig_path = p
-        break
+fig_path = next((p for n in candidates if (p:=Path(n)).exists() and p.stat().st_size>0), None)
 img_uri = as_data_uri(fig_path) if fig_path else ""
 
 # ===================== DADOS MOCK / JSON =====================
@@ -69,45 +64,41 @@ dir_vento_graus = 270
 vento_media_ms  = 5.2
 vento_erro_ms   = 2.0
 cb_max = 1000
-
 passes = [
     {"sat":"GHGSat-C10","t":"29/04/2025 – 10:36","ang":"52°"},
     {"sat":"GHGSat-C12","t":"30/04/2025 – 10:08","ang":"47°"},
 ]
 
 # JSON opcional
-M = {}
 mfile = Path("sample_measurement.json")
 if mfile.exists() and mfile.stat().st_size>0:
     try: M = json.loads(mfile.read_text(encoding="utf-8"))
     except: M = {}
-if M:
-    unidade = M.get("unidade", unidade)
-    if M.get("data_medicao"):
-        data_medicao_iso = M["data_medicao"]
-        data_medicao = fmt_dt_iso(data_medicao_iso)
-    rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
-    uncert_pct   = M.get("incerteza_pct", uncert_pct)
-    estado_mar   = M.get("estado_mar", estado_mar)
-    plataforma   = M.get("plataforma", plataforma)
-    objetos      = M.get("objetos_detectados", objetos)
-    flare_ativo  = bool(M.get("flare_ativo", flare_ativo))
-    detec_pluma  = bool(M.get("detec_pluma", detec_pluma))
-    ident_pluma  = bool(M.get("ident_pluma", ident_pluma))
-    dir_vento_graus = M.get("dir_vento_graus", dir_vento_graus)
-    vento_media_ms  = M.get("vento_media_ms", vento_media_ms)
-    vento_erro_ms   = M.get("vento_erro_ms", vento_erro_ms)
-    cb_max          = M.get("colorbar_max_ppb", cb_max)
-    resolucao_m     = M.get("resolucao_m", resolucao_m)
-    if M.get("img_swir"):
-        v = M["img_swir"]
-        if isinstance(v, str) and v.startswith("data:image/"):
-            img_uri = v
-        else:
-            p = Path(str(v))
-            if p.exists(): img_uri = as_data_uri(p)
+    if M:
+        unidade = M.get("unidade", unidade)
+        if M.get("data_medicao"):
+            data_medicao_iso = M["data_medicao"]; data_medicao = fmt_dt_iso(data_medicao_iso)
+        rate_kgph    = M.get("taxa_kgch4_h", rate_kgph)
+        uncert_pct   = M.get("incerteza_pct", uncert_pct)
+        estado_mar   = M.get("estado_mar", estado_mar)
+        plataforma   = M.get("plataforma", plataforma)
+        objetos      = M.get("objetos_detectados", objetos)
+        flare_ativo  = bool(M.get("flare_ativo", flare_ativo))
+        detec_pluma  = bool(M.get("detec_pluma", detec_pluma))
+        ident_pluma  = bool(M.get("ident_pluma", ident_pluma))
+        dir_vento_graus = M.get("dir_vento_graus", dir_vento_graus)
+        vento_media_ms  = M.get("vento_media_ms", vento_media_ms)
+        vento_erro_ms   = M.get("vento_erro_ms", vento_erro_ms)
+        cb_max          = M.get("colorbar_max_ppb", cb_max)
+        resolucao_m     = M.get("resolucao_m", resolucao_m)
+        if M.get("img_swir"):
+            v = M["img_swir"]
+            if isinstance(v, str) and v.startswith("data:image/"): img_uri = v
+            else:
+                p = Path(str(v))
+                if p.exists(): img_uri = as_data_uri(p)
 
-# Tabelas à direita
+# Tabelas painel
 swir_rows = f"""
 <tr><th>Detecção da Pluma de Metano</th><td>{"Sim" if detec_pluma else "Não"}</td></tr>
 <tr><th>Identificação da Pluma de Metano</th><td>{"Sim" if ident_pluma else "Não"}</td></tr>
@@ -204,9 +195,11 @@ table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding
 table.minimal th{color:#9fb0d4;font-weight:700}
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
 
-/* ===== Toolbar flutuante ===== */
+/* ===== Toolbar flutuante (DIREITA) ===== */
 .toolbar{
-  position:absolute; top:12px; left:12px; display:flex; gap:8px; z-index:30;
+  position:absolute; top:20px;
+  right:calc(var(--panel-w) + var(--gap) + 8px); /* cola na lateral do painel */
+  left:auto; display:flex; flex-direction:column; align-items:flex-end; gap:8px; z-index:30;
 }
 .toolbtn{
   height:36px; min-width:36px; padding:0 10px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
@@ -219,6 +212,9 @@ table.minimal th{color:#9fb0d4;font-weight:700}
   border:1px solid rgba(0,227,165,.35); padding:6px 10px; border-radius:999px; font-weight:800; z-index:30;
 }
 
+/* Quando o painel estiver oculto, encosta na borda da figura */
+.hide-panel .toolbar{ right:var(--gap) }
+
 /* Toggle painel escondido */
 .hide-panel .side-panel{display:none}
 .hide-panel .visual-wrap{right:var(--gap)}
@@ -228,11 +224,11 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 <body>
 <div class="stage" id="stage">
 
-  <div class="badge-pill">Mock • v1.1</div>
+  <div class="badge-pill">Mock • v1.2</div>
 
   <!-- FIGURA -->
   <div class="visual-wrap" id="visual">
-    <!-- Toolbar de ações -->
+    <!-- Toolbar ações -->
     <div class="toolbar">
       <button class="toolbtn" id="btnZoomIn"  title="Zoom +">
         <svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-5 0A4.5 4.5 0 1 1 15 9.5 4.505 4.505 0 0 1 10.5 14zm1-3h-2v2h-1v-2H6v-1h2V8h1v2h2z"/></svg>Zoom
@@ -257,9 +253,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
       </button>
     </div>
 
-    <div class="v-header">
-      Satélite CHGSAT – Sensor SWIR
-    </div>
+    <div class="v-header">Satélite CHGSAT – Sensor SWIR</div>
 
     <div class="v-body" id="vbody">
       <div class="img-holder" id="imgHolder" style="transform:scale(1) translate(0px,0px)">
@@ -365,7 +359,7 @@ document.getElementById('btnExportAll').onclick = ()=> exportPNGOf(document.getE
 
 // ========= info
 document.getElementById('btnInfo').onclick = ()=>{
-  alert('Mock SaaS DAP ATLAS — figura SWIR com toolbar; painel com Aquisição, Resultados e Meteo. Badge: SENSOR SWIR.');
+  alert('Mock SaaS DAP ATLAS — toolbar vertical à direita, painel com Aquisição/Resultados/Meteo. Badge: SENSOR SWIR.');
 };
 </script>
 </body></html>
@@ -386,4 +380,5 @@ html = (html
 )
 
 components.html(html, height=1000, scrolling=False)
+
 
