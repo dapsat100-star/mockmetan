@@ -224,7 +224,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 <body>
 <div class="stage" id="stage">
 
- # <div class="badge-pill">Mock • v1.2</div>
+ 
 
   <!-- FIGURA -->
   <div class="visual-wrap" id="visual">
