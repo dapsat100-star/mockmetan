@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — Mock SaaS (figura única + painel)
-# PNG 8K (app e figura) + PDF A4/A3 vetorial
+# PNG 8K (app e figura) + PDF A4/A3 vetorial + tipografia maior + export estável
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -37,10 +37,11 @@ logo_html = (
 )
 
 # ===================== FIGURA (autodetect) =====================
+# Prioriza imagem HQ; deixa WhatsApp por último
 candidates = [
-    "Screenshot 2025-10-08 114722.png",
-    "Screenshot_2025-10-08_114722.png",
+    "figure_highres.png", "figure_highres.jpg", "figure_highres.tif",
     "fig_swir.png", "split_combo.png", "swir.png", "figure.png",
+    "Screenshot_2025-10-08_114722.png", "Screenshot 2025-10-08 114722.png",
     "WhatsApp Image 2025-10-08 at 1.51.03 AM.jpeg",
 ]
 fig_path = next((p for n in candidates if (p := Path(n)).exists() and p.stat().st_size > 0), None)
@@ -94,7 +95,7 @@ if mfile.exists() and mfile.stat().st_size > 0:
         resolucao_m      = M.get("resolucao_m", resolucao_m)
         if M.get("img_swir"):
             v = M["img_swir"]
-            if isinstance(v, str) and v.startswith("data:image/"):
+            if isinstance(v, str) and v.startswith("data:image:"):
                 img_uri = v
             else:
                 p = Path(str(v))
@@ -131,8 +132,11 @@ html = r"""
   --text:__TEXT__; --muted:__MUTED__; --border:__BORDER__;
 }
 *{box-sizing:border-box}
-body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica Neue,Arial,Noto Sans,sans-serif}
+html, body{
+  margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica Neue,Arial,Noto Sans,sans-serif;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+}
 .stage{min-height:100vh;width:100vw;position:relative}
 
 /* ===== Figura (esquerda) ===== */
@@ -144,7 +148,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   display:flex; flex-direction:column;
 }
 .v-header{
-  background:#1f497d; color:#e8f0ff; padding:8px 12px; font-weight:800; font-size:1.5rem;
+  background:#1f497d; color:#e8f0ff; padding:10px 12px; font-weight:800; font-size:1.5rem;
   border-bottom:1px solid rgba(255,255,255,.2); position:relative;
 }
 .v-body{position:relative; flex:1; background:#0b1327; overflow:hidden}
@@ -152,7 +156,10 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
 }
 .v-body img{max-width:100%; max-height:100%; object-fit:contain; background:#0b1327;}
-.v-footer{padding:8px 10px; color:#b9c6e6; font-size:.82rem; background:#0e172b; border-top:1px solid var(--border)}
+.v-footer{
+  padding:12px 16px; color:#cfdaf5; font-size:1.05rem; line-height:1.4;
+  background:#0e172b; border-top:1px solid var(--border); text-align:center;
+}
 
 /* ações no header da figura */
 .vh-actions{position:absolute; right:10px; top:6px; display:flex; gap:8px}
@@ -169,31 +176,46 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   background:#0f1a2e; display:flex; flex-direction:column; justify-content:space-between;
   padding:8px 10px; box-shadow:0 10px 24px rgba(0,0,0,.35);
 }
-.ticks{display:flex; gap:20px; align-items:center; overflow:auto; color:#cfe7ff; font-size:.85rem}
+.ticks{display:flex; gap:20px; align-items:center; overflow:auto; color:#cfe7ff; font-size:.9rem}
 
 /* ===== Painel direito ===== */
 .side-panel{
   position:absolute; top:var(--gap); right:var(--gap); bottom:var(--gap);
   width:var(--panel-w); background:var(--card); border:1px solid var(--border);
   border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.45);
-  padding:14px; display:flex; flex-direction:column; gap:12px; overflow:auto;
+  padding:16px; display:flex; flex-direction:column; gap:14px; overflow:auto;
   backdrop-filter:saturate(140%) blur(6px);
 }
 .header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
 .brand{display:flex;gap:12px;align-items:center}
 .brand .logo{width:82px;height:82px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
-.brand .txt .name{font-weight:900;letter-spacing:.2px}
-.brand .txt .sub{font-size:.86rem;color:#9fb0d4}
+.brand .txt .name{font-weight:900;letter-spacing:.2px; font-size:1.3rem}
+.brand .txt .sub{font-size:1rem;color:#9fb0d4}
 .badge{justify-self:end;background:rgba(0,227,165,.12);color:#00E3A5;border:1px solid rgba(0,227,165,.25);
-  padding:6px 10px;border-radius:999px;font-weight:700;font-size:.85rem;white-space:nowrap}
+  padding:6px 10px;border-radius:999px;font-weight:700;font-size:.95rem;white-space:nowrap}
 .hr{height:1px;background:var(--border);margin:6px 0 10px 0}
 .block{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.4)}
-.block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center;font-size:1.5rem}
-.block .body{padding:10px}
+.block .title{
+  background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center;
+  font-size:1.25rem; letter-spacing:.3px;
+}
+.block .body{padding:12px}
 table.minimal{width:100%;border-collapse:collapse}
-table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:1.5rem}
-table.minimal th{color:#9fb0d4;font-weight:700}
-.footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
+table.minimal th, table.minimal td{
+  border-bottom:1px solid var(--border);padding:10px 8px;text-align:left;font-size:1.1rem; line-height:1.4;
+}
+table.minimal th{color:#c5d1ec;font-weight:700}
+.footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.9rem}
+
+/* ===== Modo de exportação: evita sobreposição de texto ===== */
+.exporting *{
+  letter-spacing:0 !important; word-spacing:0 !important; text-shadow:none !important;
+  filter:none !important; backdrop-filter:none !important;
+}
+.exporting .block .title,
+.exporting table.minimal th, .exporting table.minimal td,
+.exporting .v-header, .exporting .footer { line-height:1.4 !important; }
+.exporting .vh-actions { display:none !important; }
 </style>
 </head>
 <body>
@@ -277,29 +299,29 @@ const passes=__PASSES_JSON__;
      <small>${(p.t||'-')} • ${(p.ang||'-')}</small></div>`).join('');
 })();
 
-// ========= PNG 8K (Hi-DPI + zoom-out opcional)
+// ========= PNG 8K (estável, sem zoom-out; evita sobreposição)
 async function exportPNG8K(el, fname, opts={}){
   const longSide = opts.longSide || 7680;
-  const capScale = opts.capScale || 6;
-  const zoomOut  = opts.zoomOut  ?? 0.67; // 67% costuma melhorar nitidez
-
+  const capScale = opts.capScale || 5;  // 5 costuma ser mais estável que 6
   const rect = el.getBoundingClientRect();
   const w = Math.max(1, Math.ceil(rect.width));
   const h = Math.max(1, Math.ceil(rect.height));
   const base = Math.max(w, h);
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  let scale = Math.min(capScale, (longSide / base) * (dpr > 1 ? dpr : 1));
+  const scale = Math.min(capScale, (longSide / base) * (dpr > 1 ? dpr : 1));
 
-  const body = document.body;
-  const hasZoom = (typeof body.style.zoom !== 'undefined');
-  const prevZoom = body.style.zoom;
-  if (hasZoom && zoomOut && zoomOut > 0 && zoomOut < 1){
-    body.style.zoom = (zoomOut*100) + '%';
-    await new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
-  }
+  document.body.classList.add('exporting'); // modo export: line-height/sem sombras
 
   try{
-    const canvas = await html2canvas(el, { backgroundColor:null, useCORS:true, logging:false, scale });
+    const canvas = await html2canvas(el, {
+      backgroundColor:null,
+      useCORS:true,
+      logging:false,
+      scale,
+      foreignObjectRendering:true,
+      windowWidth: Math.max(el.scrollWidth, w),
+      windowHeight: Math.max(el.scrollHeight, h)
+    });
     await new Promise((resolve) => {
       canvas.toBlob(function(blob){
         const a=document.createElement('a'); const ts=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
@@ -310,18 +332,17 @@ async function exportPNG8K(el, fname, opts={}){
       }, 'image/png');
     });
   } finally {
-    if (hasZoom) body.style.zoom = prevZoom || '';
+    document.body.classList.remove('exporting');
   }
 }
-document.getElementById('btnExport8K')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('stage'),  'dap-atlas_app_8k_{ts}_{w}x{h}.png', {longSide:7680, capScale:6, zoomOut:0.67}) );
-document.getElementById('btnExport8KFig')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('visual'), 'dap-atlas_fig_8k_{ts}_{w}x{h}.png',  {longSide:7680, capScale:6, zoomOut:0.67}) );
+document.getElementById('btnExport8K')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('stage'),  'dap-atlas_app_8k_{ts}_{w}x{h}.png', {longSide:7680, capScale:5}) );
+document.getElementById('btnExport8KFig')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('visual'), 'dap-atlas_fig_8k_{ts}_{w}x{h}.png',  {longSide:7680, capScale:5}) );
 
 // ======== PDF vetorial via janela de impressão ========
 function printAsPDF(el, {size='A4', orientation='landscape'} = {}){
   const w = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
   const stage = el.cloneNode(true);
 
-  // fundo branco suave para impressão
   stage.style.background = '#ffffff';
   stage.querySelectorAll('.visual-wrap, .side-panel, .timeline').forEach(n=>{ n.style.boxShadow = 'none'; });
 
@@ -373,3 +394,4 @@ html = (html
 )
 
 components.html(html, height=1400, scrolling=False)
+
