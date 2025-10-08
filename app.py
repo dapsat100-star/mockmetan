@@ -378,6 +378,12 @@ html = (html
   .replace("__YEAR__", str(datetime.now().year))
   .replace("__PASSES_JSON__", json.dumps(passes, ensure_ascii=False))
 )
+# Elimina toolbar e seus estilos
+html = html.replace(
+    '<div class="toolbar">', 
+    '<div style="display:none;">'
+)
+html = html.replace('.toolbar{', '.toolbar{display:none !important;')
 
 
 
