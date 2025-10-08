@@ -48,7 +48,7 @@ fig_path = next((p for n in candidates if (p := Path(n)).exists() and p.stat().s
 img_uri = as_data_uri(fig_path) if fig_path else ""
 
 # ===================== DADOS MOCK / JSON =====================
-unidade        = "Rio de Janeiro"
+unidade        = "XPTO"
 data_medicao_iso = "2025-04-29T10:36:00Z"
 data_medicao   = fmt_dt_iso(data_medicao_iso)
 hora_local     = "10h36"
