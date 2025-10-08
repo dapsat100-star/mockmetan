@@ -22,7 +22,7 @@ def as_data_uri(path: Path) -> str:
 def fmt_dt_iso(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-        return dt.strftime("%d/%m/%Y — %H:%M (hora Local)")
+        return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
     except Exception:
         return iso
 
@@ -224,7 +224,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 <body>
 <div class="stage" id="stage">
 
-  <div class="badge-pill">Mock • v1.2</div>
+ # <div class="badge-pill">Mock • v1.2</div>
 
   <!-- FIGURA -->
   <div class="visual-wrap" id="visual">
