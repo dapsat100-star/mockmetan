@@ -22,7 +22,7 @@ def as_data_uri(path: Path) -> str:
 def fmt_dt_iso(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-        return dt.strftime("%d/%m/%Y — %H:%M (UTC)")
+        return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
     except Exception:
         return iso
 
@@ -254,7 +254,7 @@ table.minimal th{color:#9fb0d4;font-weight:700}
         <div id="map-passes" class="mapbox">Mini-mapa de footprints</div>
         <div class="timeline" id="tl"></div>
         <div style="height:10px"></div>
-        <table class="minimal"><thead><tr><th>Satélite</th><th>Data/Hora (UTC)</th><th>Ângulo</th></tr></thead><tbody>__PASSES_ROWS__</tbody></table>
+        <table class="minimal"><thead><tr><th>Satélite</th><th>Data/Hora (Hora Local)</th><th>Ângulo</th></tr></thead><tbody>__PASSES_ROWS__</tbody></table>
       </div>
 
       <div class="tab-content" id="content-result" style="display:none">
