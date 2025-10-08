@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
 # Visual 50/50 com duas imagens (ou imagem única), chips de horário e painel lateral.
-# Imagens agora preenchem (object-fit: cover) com foco ajustável via object-position.
+# Inclui: botão de exportação PNG (html2canvas) em HD/4K/8K.
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -19,8 +19,8 @@ PRIMARY, BG, CARD, TEXT, MUTED, BORDER = (
 PANEL_W_PX, PANEL_GAP_PX = 560, 24
 
 # Ajuste fino de enquadramento (foco) das imagens quando em 2 metades:
-LEFT_FOCUS  = "40% 65%"   # x y  (RGB)   -> mude conforme desejar
-RIGHT_FOCUS = "55% 45%"   # x y  (SWIR)  -> mude conforme desejar
+LEFT_FOCUS  = "40% 65%"   # x y  (RGB)
+RIGHT_FOCUS = "55% 45%"   # x y  (SWIR)
 
 def as_data_uri(path: Path) -> str:
     return "data:image/" + path.suffix.lstrip(".") + ";base64," + b64encode(path.read_bytes()).decode("ascii")
@@ -82,8 +82,10 @@ delta_min = diff_minutes(rgb_iso, swir_iso) or 0
 M = {}
 mfile = Path("sample_measurement.json")
 if mfile.exists() and mfile.stat().st_size>0:
-    try: M = json.loads(mfile.read_text(encoding="utf-8"))
-    except: M = {}
+    try:
+        M = json.loads(mfile.read_text(encoding="utf-8"))
+    except:
+        M = {}
 
 if M:
     unidade      = M.get("unidade", unidade)
@@ -124,7 +126,7 @@ met_rows = f"""
 img_rgb_style  = "display:block" if img_rgb else "display:none"
 img_swir_style = "display:block" if img_swir else "display:none"
 
-# ===================== HTML =====================
+# ===================== HTML (APP) =====================
 html = r"""
 <!doctype html>
 <html><head><meta charset="utf-8"/>
@@ -151,7 +153,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 /* MODO 1: imagem única já dividida */
 .split-one{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0e1629}
 .split-one img{
-  width:100%; height:100%; object-fit:cover; object-position:center; display:block;  /* preenchimento */
+  width:100%; height:100%; object-fit:cover; object-position:center; display:block;
 }
 .split-one::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
 .chip{
@@ -162,13 +164,13 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .chip.left{left:10px}
 .chip.right{right:10px}
 
-/* MODO 2: duas metades (preenchendo e com foco) */
+/* MODO 2: duas metades */
 .split-grid{height:100%; width:100%; display:grid; grid-template-columns:1fr 1fr; gap:0; position:relative}
 .split-grid .cell{position:relative; overflow:hidden; background:#0e1629; display:flex; align-items:center; justify-content:center;
   border-right:1px solid rgba(255,255,255,.06)}
 .split-grid .cell:last-child{border-right:none}
 .split-grid img{
-  width:100%; height:100%; object-fit:cover; object-position:center; display:block;  /* preenchimento */
+  width:100%; height:100%; object-fit:cover; object-position:center; display:block;
 }
 .split-grid::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
 
@@ -180,7 +182,6 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   padding:14px; display:flex; flex-direction:column; gap:12px; overflow:auto;
   backdrop-filter:saturate(140%) blur(6px);
 }
-/* Header */
 .header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
 .brand{display:flex;gap:12px;align-items:center}
 .brand .logo{width:82px;height:82px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
@@ -386,7 +387,6 @@ if combined_uri:
         f"</div>"
     )
 else:
-    # duas imagens — já com foco (object-position) controlável por LEFT_FOCUS/RIGHT_FOCUS
     left_html  = f"<img src='{left_uri}'  alt='Left'  style='object-position:{LEFT_FOCUS};'/>"  if left_uri  else "<div style='color:#9fb0d4'>left.png</div>"
     right_html = f"<img src='{right_uri}' alt='Right' style='object-position:{RIGHT_FOCUS};'/>" if right_uri else "<div style='color:#9fb0d4'>right.png</div>"
     combined_block = f"<div class='split-grid'><div class='cell'>{left_html}</div><div class='cell'>{right_html}</div></div>"
@@ -408,4 +408,62 @@ html = (html
   .replace("__COMBINED_OR_GRID__", combined_block)
 )
 
+# === [EXPORT PNG — Toolbar + JS] ===
+export_inject = """
+<!-- ===== EXPORT TOOLBAR (HD/4K/8K) ===== -->
+<div id="export-toolbar" style="
+  position:fixed; z-index:9999; top:12px; right:12px; display:flex; gap:8px;
+  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica Neue,Arial,sans-serif;">
+  <button onclick="exportPNG(2)"  style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);
+    background:rgba(0,227,165,.15);color:#d7ffe0;font-weight:800;cursor:pointer;">PNG HD</button>
+  <button onclick="exportPNG(3)"  style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);
+    background:rgba(78,168,222,.18);color:#e6f3ff;font-weight:800;cursor:pointer;">PNG 4K</button>
+  <button onclick="exportPNG(4)"  style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.10);color:#ffffff;font-weight:800;cursor:pointer;">PNG 8K*</button>
+</div>
+
+<!-- html2canvas -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<script>
+  function exportPNG(scale){
+    try{
+      const target = document.querySelector('.stage'); // ou '.split-wrap' p/ só a área visual
+      if(!target){ alert('Elemento .stage não encontrado.'); return; }
+
+      html2canvas(target, {
+        scale: scale || 2,            // 2=HD, 3=~4K, 4=~8K (depende do container)
+        backgroundColor: null,        // fundo transparente; troque por '#0b1221' se quiser sólido
+        useCORS: true,
+        logging: false,
+        windowWidth: document.documentElement.clientWidth,
+        windowHeight: document.documentElement.clientHeight
+      }).then(canvas => {
+        canvas.toBlob(function(blob){
+          const a = document.createElement('a');
+          const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+          a.href = URL.createObjectURL(blob);
+          a.download = `dap-atlas_${ts}_${canvas.width}x${canvas.height}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+        }, 'image/png');
+      }).catch(err=>{
+        console.error(err);
+        alert('Falha ao exportar PNG.');
+      });
+    }catch(e){
+      console.error(e);
+      alert('Erro inesperado na exportação.');
+    }
+  }
+</script>
+"""
+
+# injeta a toolbar e o script antes de </body></html>
+html = html.replace("</body></html>", export_inject + "\n</body></html>")
+
+# Render
 components.html(html, height=1000, scrolling=False)
+
