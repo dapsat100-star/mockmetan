@@ -191,7 +191,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
 .block .body{padding:10px}
 table.minimal{width:100%;border-collapse:collapse}
-table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
+table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:1.1rem}
 table.minimal th{color:#9fb0d4;font-weight:700}
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
 </style>
