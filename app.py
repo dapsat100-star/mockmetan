@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # DAP ATLAS — OGMP 2.0 L5 (mock SaaS)
-# Suporta: 1) imagem única já dividida (split_combo.png) com chips de horário
-#          2) fallback para duas imagens (left.png / right.png)
-
+# DUAS IMAGENS (esq/dir) com chips de horário em cada lado
 from datetime import datetime, timezone
 from base64 import b64encode
 from pathlib import Path
@@ -41,13 +39,13 @@ if p_logo.exists() and p_logo.stat().st_size>0:
     logo_uri = as_data_uri(p_logo)
 logo_html = f"<img src='{logo_uri}' alt='DAP ATLAS' style='width:82px;height:82px;object-fit:contain;'/>" if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 
-# ===== Visual: imagem combinada (mude o nome se quiser)
-COMBINED_PATH = Path("split_combo.png")  # coloque aqui sua imagem única já dividida
+# ===== Visual: OU imagem combinada OU duas imagens
+COMBINED_PATH = Path("split_combo.png")  # se existir, usa combinada; senão, usa esquerda/direita
 combined_uri = as_data_uri(COMBINED_PATH) if COMBINED_PATH.exists() and COMBINED_PATH.stat().st_size>0 else ""
 
-# Fallback (não será usado se combined existir)
-left_uri  = as_data_uri(Path("left.png"))  if not combined_uri and Path("left.png").exists()  else ""
-right_uri = as_data_uri(Path("right.png")) if not combined_uri and Path("right.png").exists() else ""
+left_path, right_path = Path("left.png"), Path("right.png")
+left_uri  = as_data_uri(left_path)  if left_path.exists()  and left_path.stat().st_size>0  else ""
+right_uri = as_data_uri(right_path) if right_path.exists() and right_path.stat().st_size>0 else ""
 
 # ===== Dados padrão
 unidade      = "Rio de Janeiro"
@@ -61,13 +59,13 @@ passes       = [{"sat":"GHGSat-C10","t":"13/07/2025 – 09:12","ang":"52°"},
 img_rgb, img_swir = "", ""
 cb_max = 1000
 
-# Horários das metades (para os chips)
-rgb_iso  = "2025-04-29T08:06:00Z"
-swir_iso = "2025-04-29T10:36:00Z"
+# Horários das metades (chips)
+rgb_iso  = "2025-04-29T08:06:00Z"   # aquis. da imagem da ESQUERDA
+swir_iso = "2025-04-29T10:36:00Z"   # aquis. da imagem da DIREITA
 rgb_h, swir_h = fmt_dt_iso(rgb_iso), fmt_dt_iso(swir_iso)
 delta_min = diff_minutes(rgb_iso, swir_iso) or 0
 
-# ===== Carrega JSON opcional
+# ===== Carrega JSON opcional (se quiser injetar dinamicamente)
 M = {}
 mfile = Path("sample_measurement.json")
 if mfile.exists() and mfile.stat().st_size>0:
@@ -106,8 +104,6 @@ met_rows = f"""
 <tr><th>Velocidade do Vento (m/s)</th><td>{M.get('vento_media_ms', 5.2)} ± {M.get('vento_erro_ms', 2.0)}</td></tr>
 <tr><th>Direção do Vento (°)</th><td>{M.get('dir_vento_graus', 270)} (de onde sopra)</td></tr>
 """
-img_rgb_style  = "display:block" if img_rgb else "display:none"
-img_swir_style = "display:block" if img_swir else "display:none"
 
 # ===== HTML
 html = r"""
@@ -137,15 +133,17 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .split-one{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#0e1629}
 .split-one img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
 .split-one::before{content:""; position:absolute; left:50%; top:0; width:1px; height:100%; background:rgba(255,255,255,.12)}
+
+/* Chips de horário */
 .chip{
-  position:absolute; top:10px; padding:6px 10px; border-radius:999px; font-size:.8rem; font-weight:700;
-  color:#d7e2ff; background:rgba(15,26,46,.7); border:1px solid rgba(255,255,255,.12);
-  backdrop-filter:saturate(130%) blur(3px)
+  position:absolute; top:10px; padding:8px 12px; border-radius:999px; font-size:1.0rem; font-weight:800;
+  color:#eaf2ff; background:rgba(10,18,34,.78); border:1px solid rgba(255,255,255,.18);
+  backdrop-filter:saturate(140%) blur(4px)
 }
 .chip.left{left:10px}
 .chip.right{right:10px}
 
-/* MODO 2 (fallback): duas células */
+/* MODO 2 (fallback): duas células COM chips */
 .split-grid{height:100%; width:100%; display:grid; grid-template-columns:1fr 1fr; gap:0; position:relative}
 .split-grid .cell{position:relative; overflow:hidden; background:#0e1629; display:flex; align-items:center; justify-content:center}
 .split-grid img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}
@@ -171,6 +169,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .block{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.4)}
 .block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
 .block .body{padding:10px}
+
 /* KPIs */
 .kpi2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .kpi{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:14px 12px;text-align:center;position:relative}
@@ -185,19 +184,23 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
 .gauge{width:72px;height:72px}
 .gauge .bg{fill:none;stroke:rgba(255,255,255,.15);stroke-width:6}
 .gauge .val{fill:none;stroke:#34D399;stroke-width:6;transform:rotate(-90deg);transform-origin:50% 50%}
+
 /* Tabs */
 .tabs{margin-top:4px}
 .tabs input{display:none}
 .tabs label{display:inline-block;padding:8px 12px;margin-right:8px;border:1px solid var(--border);border-bottom:none;border-top-left-radius:10px;border-top-right-radius:10px;color:#9fb0d4;background:rgba(255,255,255,.02);cursor:pointer;font-weight:700;font-size:.92rem}
 .tabs input:checked + label{color:#08121f;background:var(--primary);border-color:var(--primary)}
 .tab-content{border:1px solid var(--border);border-radius:0 12px 12px 12px;padding:12px;margin-top:-1px}
+
 table.minimal{width:100%;border-collapse:collapse}
 table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:.95rem}
 table.minimal th{color:#9fb0d4;font-weight:700}
+
 .mapbox{height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:10px;background:linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));display:flex;align-items:center;justify-content:center;color:#a9b8df}
 .timeline{display:flex;gap:12px;overflow:auto;padding:8px;border:1px solid var(--border);border-radius:10px;background:#0f1a2e;margin-top:10px}
 .badge-pass{min-width:190px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border)}
 .badge-pass b{color:#e6eefc}
+
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.85rem}
 </style>
 </head>
@@ -206,7 +209,6 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 
   <!-- VISUAL AREA -->
   <div class="split-wrap">
-    <!-- Se existir imagem combinada, usa essa seção; caso contrário, o backend injeta a grade de duas células -->
     __COMBINED_OR_GRID__
   </div>
 
@@ -245,8 +247,20 @@ table.minimal th{color:#9fb0d4;font-weight:700}
 
       <div class="tab-content" id="content-medicao">
         <div class="kpi2">
-          <div class="kpi"><div class="label">Taxa</div><div><span class="value" id="rate-val">__RATE__</span><span class="unit">kg CH₄/h</span><span id="rate-delta" class="badge-pos" style="display:none"></span></div><svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" id="sp-rate"></svg></div>
-          <div class="kpi"><div class="label">Incerteza de Medição</div><div style="display:flex;align-items:center;justify-content:center;gap:6px"><span class="value" id="unc-val">__UNC__</span><span class="unit">%</span></div><div class="gbox"><svg viewBox="0 0 42 42" class="gauge"><circle class="bg" cx="21" cy="21" r="16"/><circle class="val" cx="21" cy="21" r="16" stroke-dasharray="0,100"/></svg></div></div>
+          <div class="kpi">
+            <div class="label">Taxa</div>
+            <div><span class="value" id="rate-val">__RATE__</span><span class="unit">kg CH₄/h</span><span id="rate-delta" class="badge-pos" style="display:none"></span></div>
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" id="sp-rate"></svg>
+          </div>
+          <div class="kpi">
+            <div class="label">Incerteza de Medição</div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+              <span class="value" id="unc-val">__UNC__</span><span class="unit">%</span>
+            </div>
+            <div class="gbox">
+              <svg viewBox="0 0 42 42" class="gauge"><circle class="bg" cx="21" cy="21" r="16"/><circle class="val" cx="21" cy="21" r="16" stroke-dasharray="0,100"/></svg>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -260,10 +274,17 @@ table.minimal th{color:#9fb0d4;font-weight:700}
       <div class="tab-content" id="content-result" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
           <div class="block"><div class="title">Satélite RGB</div>
-            <div class="body" style="padding:0"><img src="__IMG_RGB__" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/><div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __RGB_HUMAN__<br>Imagem de referência visual</div></div>
+            <div class="body" style="padding:0">
+              <img src="__IMG_RGB__" style="width:100%;height:auto;display:block;__IMG_RGB_STYLE__;border-bottom:1px solid var(--border)"/>
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __RGB_HUMAN__<br>Imagem de referência visual</div>
+            </div>
           </div>
           <div class="block"><div class="title">Satélite SWIR (CH₄)</div>
-            <div class="body" style="padding:0;position:relative"><img src="__IMG_SWIR__" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/><div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">0 – __CB_MAX__ ppb</div><div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __SWIR_HUMAN__<br>Realce qualitativo (EABB)</div></div>
+            <div class="body" style="padding:0;position:relative">
+              <img src="__IMG_SWIR__" style="width:100%;height:auto;display:block;__IMG_SWIR_STYLE__"/>
+              <div style="position:absolute;right:8px;top:8px;background:#0f1a2e;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:.85rem">0 – __CB_MAX__ ppb</div>
+              <div style="padding:8px 10px;color:#b9c6e6;font-size:.85rem"><b>Data/Hora de Aquisição:</b> __SWIR_HUMAN__<br>Realce qualitativo (EABB)</div>
+            </div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -331,13 +352,25 @@ const passes=__PASSES_JSON__;
 </body></html>
 """
 
-# ===== decide qual bloco visual injetar
+# ===== decidir o bloco visual (com chips nos dois modos)
 if combined_uri:
-    combined_block = f"<div class='split-one'><img src='{combined_uri}' alt='split'/><span class='chip left'>RGB: {fmt_dt_iso(rgb_iso)}</span><span class='chip right'>SWIR: {fmt_dt_iso(swir_iso)}</span></div>"
+    combined_block = (
+        f"<div class='split-one'>"
+        f"<img src='{combined_uri}' alt='split'/>"
+        f"<span class='chip left'>RGB: {fmt_dt_iso(rgb_iso)}</span>"
+        f"<span class='chip right'>SWIR: {fmt_dt_iso(swir_iso)}</span>"
+        f"</div>"
+    )
 else:
     left_html  = f"<img src='{left_uri}'  alt='Left'/>"  if left_uri  else "<div style='color:#9fb0d4'>left.png</div>"
     right_html = f"<img src='{right_uri}' alt='Right'/>" if right_uri else "<div style='color:#9fb0d4'>right.png</div>"
-    combined_block = f"<div class='split-grid'><div class='cell'>{left_html}</div><div class='cell'>{right_html}</div></div>"
+    # >>> chips adicionados em CADA célula <<<
+    combined_block = (
+        "<div class='split-grid'>"
+          f"<div class='cell'>{left_html}<span class='chip left'>RGB: {fmt_dt_iso(rgb_iso)}</span></div>"
+          f"<div class='cell'>{right_html}<span class='chip right'>SWIR: {fmt_dt_iso(swir_iso)}</span></div>"
+        "</div>"
+    )
 
 # ===== Replace
 html = (html
@@ -358,5 +391,3 @@ html = (html
 )
 
 components.html(html, height=1000, scrolling=False)
-
-
