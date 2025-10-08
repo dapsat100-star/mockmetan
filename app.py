@@ -188,7 +188,7 @@ body{margin:0;height:100vh;width:100vw;background:var(--bg);color:var(--text);
   padding:6px 10px;border-radius:999px;font-weight:700;font-size:.85rem;white-space:nowrap}
 .hr{height:1px;background:var(--border);margin:6px 0 10px 0}
 .block{border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.4)}
-.block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center}
+.block .title{background:#0e1629;padding:10px;color:#fff;font-weight:900;text-align:center;font-size:1.5rem}
 .block .body{padding:10px}
 table.minimal{width:100%;border-collapse:collapse}
 table.minimal th, table.minimal td{border-bottom:1px solid var(--border);padding:9px 6px;text-align:left;font-size:1.5rem}
