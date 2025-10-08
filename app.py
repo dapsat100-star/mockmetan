@@ -260,7 +260,7 @@ table.minimal th{color:#c5d1ec;font-weight:700}
         <div class="logo">__LOGO_HTML__</div>
         <div class="txt">
           <div class="name">Relatório OGMP 2.0 • L5</div>
-          <div class="sub">Unidade: __UNIDADE__</div>
+          
         </div>
       </div>
       <div class="badge">SENSOR SWIR</div>
