@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# DAP ATLAS — Mock SaaS (figura única + painel)
-# PNG 8K (app e figura) + PDF A4/A3 vetorial + tipografia maior + export estável
+# DAP ATLAS — Mock SaaS (single figure + panel)
+# PNG 8K (app & figure) + Vector PDF A4/A3 + larger typography + stable export
 
 from datetime import datetime, timezone
 from base64 import b64encode
@@ -22,7 +22,7 @@ def as_data_uri(path: Path) -> str:
 def fmt_dt_iso(iso: str) -> str:
     try:
         dt = datetime.fromisoformat(iso.replace("Z","+00:00")).astimezone(timezone.utc)
-        return dt.strftime("%d/%m/%Y — %H:%M (Hora Local)")
+        return dt.strftime("%d/%m/%Y — %H:%M (Local Time)")
     except Exception:
         return iso
 
@@ -36,8 +36,8 @@ logo_html = (
     if logo_uri else "<div style='font-weight:900;color:#000'>DA</div>"
 )
 
-# ===================== FIGURA (autodetect) =====================
-# Prioriza imagem HQ; deixa WhatsApp por último
+# ===================== FIGURE (auto-detect) =====================
+# Prioritizes HQ image; WhatsApp last
 candidates = [
     "figure_highres.png", "figure_highres.jpg", "figure_highres.tif",
     "fig_swir.png", "split_combo.png", "swir.png", "figure.png",
@@ -47,30 +47,29 @@ candidates = [
 fig_path = next((p for n in candidates if (p := Path(n)).exists() and p.stat().st_size > 0), None)
 img_uri = as_data_uri(fig_path) if fig_path else ""
 
-# ===================== DADOS MOCK / JSON =====================
-# ===================== DADOS MOCK / JSON =====================
-unidade        = "XPTO"
-data_medicao_iso = "2025-04-29T10:36:00Z"
-data_medicao   = fmt_dt_iso(data_medicao_iso)
-hora_local     = "10h36"
-resolucao_m    = 25
-rate_kgph      = 180
-uncert_pct     = 5
-estado_mar     = "Calmo"
-plataforma     = "FPSO"
-objetos        = ["Equipamentos Auxiliares"]
-flare_ativo    = True
-detec_pluma    = True
-ident_pluma    = True
-dir_vento_graus= 270
-vento_media_ms = 5.2
-vento_erro_ms  = 2.0
+# ===================== MOCK DATA / JSON =====================
+unit             = "XPTO"
+measurement_iso  = "2025-04-29T10:36:00Z"
+measurement_date = fmt_dt_iso(measurement_iso)
+local_time       = "10:36"
+resolution_m     = 25
+rate_kgph        = 180
+uncert_pct       = 5
+sea_state        = "Calm"
+platform         = "FPSO"
+objects          = ["Auxiliary Equipment"]
+flare_active     = True
+plume_detected   = True
+plume_identified = True
+wind_dir_deg     = 270
+wind_avg_ms      = 5.2
+wind_err_ms      = 2.0
 passes = [
     {"sat":"GHGSat-C10","t":"29/04/2025 – 10:36","ang":"52°"},
     {"sat":"GHGSat-C12","t":"30/04/2025 – 10:08","ang":"47°"},
 ]
 
-# JSON opcional
+# Optional JSON override
 mfile = Path("sample_measurement.json")
 if mfile.exists() and mfile.stat().st_size > 0:
     try:
@@ -78,22 +77,22 @@ if mfile.exists() and mfile.stat().st_size > 0:
     except:
         M = {}
     if M:
-        unidade = M.get("unidade", unidade)
+        unit = M.get("unidade", unit)
         if M.get("data_medicao"):
-            data_medicao_iso = M["data_medicao"]
-            data_medicao = fmt_dt_iso(data_medicao_iso)
+            measurement_iso = M["data_medicao"]
+            measurement_date = fmt_dt_iso(measurement_iso)
         rate_kgph        = M.get("taxa_kgch4_h", rate_kgph)
         uncert_pct       = M.get("incerteza_pct", uncert_pct)
-        estado_mar       = M.get("estado_mar", estado_mar)
-        plataforma       = M.get("plataforma", plataforma)
-        objetos          = M.get("objetos_detectados", objetos)
-        flare_ativo      = bool(M.get("flare_ativo", flare_ativo))
-        detec_pluma      = bool(M.get("detec_pluma", detec_pluma))
-        ident_pluma      = bool(M.get("ident_pluma", ident_pluma))
-        dir_vento_graus  = M.get("dir_vento_graus", dir_vento_graus)
-        vento_media_ms   = M.get("vento_media_ms", vento_media_ms)
-        vento_erro_ms    = M.get("vento_erro_ms", vento_erro_ms)
-        resolucao_m      = M.get("resolucao_m", resolucao_m)
+        sea_state        = M.get("estado_mar", sea_state)
+        platform         = M.get("plataforma", platform)
+        objects          = M.get("objetos_detectados", objects)
+        flare_active     = bool(M.get("flare_ativo", flare_active))
+        plume_detected   = bool(M.get("detec_pluma", plume_detected))
+        plume_identified = bool(M.get("ident_pluma", plume_identified))
+        wind_dir_deg     = M.get("dir_vento_graus", wind_dir_deg)
+        wind_avg_ms      = M.get("vento_media_ms", wind_avg_ms)
+        wind_err_ms      = M.get("vento_erro_ms", wind_err_ms)
+        resolution_m     = M.get("resolucao_m", resolution_m)
         if M.get("img_swir"):
             v = M["img_swir"]
             if isinstance(v, str) and v.startswith("data:image:"):
@@ -103,22 +102,22 @@ if mfile.exists() and mfile.stat().st_size > 0:
                 if p.exists():
                     img_uri = as_data_uri(p)
 
-# Tabelas painel
+# Right-panel tables
 swir_rows = f"""
-<tr><th>Detecção da Pluma de Metano</th><td>{"Sim" if detec_pluma else "Não"}</td></tr>
-<tr><th>Identificação da Pluma de Metano</th><td>{"Sim" if ident_pluma else "Não"}</td></tr>
-<tr><th>Concentração de Metano (kgCH₄/hr)</th><td>{rate_kgph}</td></tr>
-<tr><th>Incerteza (%)</th><td>±{uncert_pct}%</td></tr>
+<tr><th>Methane Plume Detection</th><td>{"Yes" if plume_detected else "No"}</td></tr>
+<tr><th>Methane Plume Identification</th><td>{"Yes" if plume_identified else "No"}</td></tr>
+<tr><th>Methane Concentration (kgCH₄/hr)</th><td>{rate_kgph}</td></tr>
+<tr><th>Uncertainty (%)</th><td>±{uncert_pct}%</td></tr>
 """
 rgb_rows = f"""
-<tr><th>Estado do Mar</th><td>{estado_mar}</td></tr>
-<tr><th>Plataforma</th><td>{plataforma}</td></tr>
-<tr><th>Objetos Detectados</th><td>{", ".join(objetos)}</td></tr>
-<tr><th>Flare Ativo</th><td>{'Sim 🟢' if flare_ativo else 'Não ⚪'}</td></tr>
+<tr><th>Sea State</th><td>{sea_state}</td></tr>
+<tr><th>Platform</th><td>{platform}</td></tr>
+<tr><th>Detected Objects</th><td>{", ".join(objects)}</td></tr>
+<tr><th>Active Flare</th><td>{'Yes 🟢' if flare_active else 'No ⚪'}</td></tr>
 """
 met_rows = f"""
-<tr><th>Velocidade do Vento (m/s)</th><td>{vento_media_ms} ±{vento_erro_ms}</td></tr>
-<tr><th>Direção do Vento (deg)</th><td>{dir_vento_graus} (de onde sopra)</td></tr>
+<tr><th>Wind Speed (m/s)</th><td>{wind_avg_ms} ±{wind_err_ms}</td></tr>
+<tr><th>Wind Direction (deg)</th><td>{wind_dir_deg} (from where it blows)</td></tr>
 """
 
 # ===================== HTML =====================
@@ -140,7 +139,7 @@ html, body{
 }
 .stage{min-height:100vh;width:100vw;position:relative}
 
-/* ===== Figura (esquerda) ===== */
+/* ===== Figure (left) ===== */
 .visual-wrap{
   position:absolute; top:var(--gap); bottom:100px; left:var(--gap);
   right:calc(var(--panel-w) + var(--gap)*2);
@@ -162,7 +161,7 @@ html, body{
   background:#0e172b; border-top:1px solid var(--border); text-align:center;
 }
 
-/* ações no header da figura */
+/* Actions in the figure header */
 .vh-actions{position:absolute; right:10px; top:6px; display:flex; gap:8px}
 .pill{
   height:30px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
@@ -179,15 +178,15 @@ html, body{
 }
 .ticks{display:flex; gap:20px; align-items:center; overflow:auto; color:#cfe7ff; font-size:.9rem}
 
-/* ===== Painel direito ===== */
+/* ===== Right Panel ===== */
 .side-panel{
   position:absolute; top:var(--gap); right:var(--gap); bottom:var(--gap);
   width:var(--panel-w); background:var(--card); border:1px solid var(--border);
   border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.45);
   padding:16px; display:flex; flex-direction:column; gap:14px; overflow:auto;
   backdrop-filter:saturate(140%) blur(6px);
-  font-size: 1.8rem;   /* 👈 aumenta toda a fonte do painel lateral */
-  line-height: 1.5;    /* 👌 deixa o texto mais legível */
+  font-size: 1.8rem;   /* larger overall panel font */
+  line-height: 1.5;    /* more legible text */
 }
 .header{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
 .brand{display:flex;gap:12px;align-items:center}
@@ -210,7 +209,7 @@ table.minimal th, table.minimal td{
 table.minimal th{color:#c5d1ec;font-weight:700}
 .footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;color:#a9b8df;font-size:.9rem}
 
-/* ===== Modo de exportação: evita sobreposição de texto ===== */
+/* ===== Export mode: prevent text overlap, remove effects ===== */
 .exporting *{
   letter-spacing:0 !important; word-spacing:0 !important; text-shadow:none !important;
   filter:none !important; backdrop-filter:none !important;
@@ -224,78 +223,75 @@ table.minimal th{color:#c5d1ec;font-weight:700}
 <body>
 <div class="stage" id="stage">
 
-  <!-- FIGURA -->
+  <!-- FIGURE -->
   <div class="visual-wrap" id="visual">
     <div class="v-header">
-      Satélite CHGSAT – Sensor SWIR
+      Satellite CHGSAT – SWIR Sensor
       <div class="vh-actions">
-        <button id="btnExport8K" class="pill" title="Exportar PNG 8K do dashboard">PNG 8K</button>
-        <button id="btnExport8KFig" class="pill" title="Exportar PNG 8K apenas da figura">PNG 8K (Figura)</button>
-        <button id="btnPdfA4" class="pill" title="Exportar PDF A4 (paisagem)">PDF A4</button>
-        <button id="btnPdfA3" class="pill" title="Exportar PDF A3 (paisagem)">PDF A3</button>
+        <button id="btnExport8K" class="pill" title="Export 8K PNG of the dashboard">PNG 8K</button>
+        <button id="btnExport8KFig" class="pill" title="Export 8K PNG of the figure only">PNG 8K (Figure)</button>
+        <button id="btnPdfA4" class="pill" title="Export A4 PDF (landscape)">PDF A4</button>
+        <button id="btnPdfA3" class="pill" title="Export A3 PDF (landscape)">PDF A3</button>
       </div>
     </div>
 
     <div class="v-body" id="vbody">
       <div class="img-holder" id="imgHolder">
-        <img id="theImage" src="__IMG__" alt="figura"/>
+        <img id="theImage" src="__IMG__" alt="figure"/>
       </div>
     </div>
 
     <div class="v-footer">
-      Imagem ilustrativa criada para demonstração de capacidade tecnológica. Não representa medições reais nem está vinculada a contratos, clientes ou operações comerciais.
+      Illustrative image created to demonstrate technological capability. It does not represent real measurements and is not linked to contracts, clients, or operations.
     </div>
   </div>
 
   <!-- TIMELINE -->
   <div class="timeline">
-    <div style="color:#9fb0d4;font-weight:800;">Linha do tempo (passagens)</div>
+    <div style="color:#9fb0d4;font-weight:800;">Timeline (passes)</div>
     <div class="ticks" id="tl"></div>
   </div>
 
-  <!-- PAINEL DIREITO -->
+  <!-- RIGHT PANEL -->
   <div class="side-panel" id="panel">
     <div class="header">
       <div class="brand">
         <div class="logo">__LOGO_HTML__</div>
         <div class="txt">
-          <div class="name">Relatório OGMP 2.0 • L5</div>
-          
+          <div class="name">OGMP 2.0 Report • L5</div>
         </div>
       </div>
-      <div class="badge">SENSOR SWIR</div>
+      <div class="badge">SWIR SENSOR</div>
     </div>
     <div class="hr"></div>
-<!-- Bloco Unidade -->
-<div class="block">
-  <div class="title">Unidade</div>
-  <div class="body" style="text-align:center; font-size:1.3rem; font-weight:800; color:#00E3A5;">
-    __UNIDADE__
-  </div>
-</div>
 
+    <!-- Unit -->
+    <div class="block">
+      <div class="title">Unit</div>
+      <div class="body" style="text-align:center; font-size:1.3rem; font-weight:800; color:#00E3A5;">
+        __UNIDADE__
+      </div>
+    </div>
 
-    
-
-    <!-- Bloco Aquisição -->
-    <div class="block"><div class="title">Aquisição</div>
+    <!-- Acquisition -->
+    <div class="block"><div class="title">Acquisition</div>
       <div class="body"><table class="minimal">
-        <tr><th>Data da Aquisição</th><td>__DATA_MED__</td></tr>
-        <tr><th>Hora</th><td>__HORA__</td></tr>
-        <tr><th>Resolução</th><td>__RES__ m</td></tr>
+        <tr><th>Acquisition Date</th><td>__DATA_MED__</td></tr>
+        <tr><th>Time</th><td>__HORA__</td></tr>
+        <tr><th>Resolution</th><td>__RES__ m</td></tr>
       </table></div>
     </div>
 
-    <div class="block"><div class="title">Resultados derivados do satélite SWIR</div>
+    <div class="block"><div class="title">Results Derived from SWIR Satellite</div>
       <div class="body"><table class="minimal">__SWIR_ROWS__</table></div></div>
 
-    <div class="block"><div class="title">Resultados derivados do satélite RGB</div>
+    <div class="block"><div class="title">Results Derived from RGB Satellite</div>
       <div class="body"><table class="minimal">__RGB_ROWS__</table></div></div>
 
-    <div class="block"><div class="title">Dados Meteorológicos — GEOS</div>
+    <div class="block"><div class="title">Meteorological Data — GEOS</div>
       <div class="body"><table class="minimal">__MET_ROWS__</table></div></div>
 
-    <div class="footer"><div>© __YEAR__ MAVIPE Sistemas Espaciais</div><div></div></div>
+    <div class="footer"><div>© __YEAR__ MAVIPE Space Systems</div><div></div></div>
   </div>
 </div>
 
@@ -312,10 +308,10 @@ const passes=__PASSES_JSON__;
      <small>${(p.t||'-')} • ${(p.ang||'-')}</small></div>`).join('');
 })();
 
-// ========= PNG 8K (estável, sem zoom-out; evita sobreposição)
+// ========= PNG 8K (stable, avoids zoom-out; prevents overlap)
 async function exportPNG8K(el, fname, opts={}){
   const longSide = opts.longSide || 7680;
-  const capScale = opts.capScale || 5;  // 5 costuma ser mais estável que 6
+  const capScale = opts.capScale || 5;  // 5 tends to be more stable than 6
   const rect = el.getBoundingClientRect();
   const w = Math.max(1, Math.ceil(rect.width));
   const h = Math.max(1, Math.ceil(rect.height));
@@ -323,7 +319,7 @@ async function exportPNG8K(el, fname, opts={}){
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const scale = Math.min(capScale, (longSide / base) * (dpr > 1 ? dpr : 1));
 
-  document.body.classList.add('exporting'); // modo export: line-height/sem sombras
+  document.body.classList.add('exporting'); // export mode: consistent line-height, no shadows
 
   try{
     const canvas = await html2canvas(el, {
@@ -351,7 +347,7 @@ async function exportPNG8K(el, fname, opts={}){
 document.getElementById('btnExport8K')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('stage'),  'dap-atlas_app_8k_{ts}_{w}x{h}.png', {longSide:7680, capScale:5}) );
 document.getElementById('btnExport8KFig')?.addEventListener('click', ()=> exportPNG8K(document.getElementById('visual'), 'dap-atlas_fig_8k_{ts}_{w}x{h}.png',  {longSide:7680, capScale:5}) );
 
-// ======== PDF vetorial via janela de impressão ========
+// ======== Vector PDF via print window ========
 function printAsPDF(el, {size='A4', orientation='landscape'} = {}){
   const w = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
   const stage = el.cloneNode(true);
@@ -398,8 +394,8 @@ html = (html
   .replace("__PANEL_W__", str(PANEL_W_PX)).replace("__PANEL_GAP__", str(PANEL_GAP_PX))
   .replace("__PRIMARY__", PRIMARY).replace("__BG__", BG).replace("__CARD__", CARD)
   .replace("__TEXT__", TEXT).replace("__MUTED__", MUTED).replace("__BORDER__", BORDER)
-  .replace("__LOGO_HTML__", logo_html).replace("__UNIDADE__", unidade)
-  .replace("__DATA_MED__", data_medicao).replace("__HORA__", hora_local).replace("__RES__", str(resolucao_m))
+  .replace("__LOGO_HTML__", logo_html).replace("__UNIDADE__", unit)
+  .replace("__DATA_MED__", measurement_date).replace("__HORA__", local_time).replace("__RES__", str(resolution_m))
   .replace("__IMG__", img_uri or "")
   .replace("__SWIR_ROWS__", swir_rows).replace("__RGB_ROWS__", rgb_rows).replace("__MET_ROWS__", met_rows)
   .replace("__YEAR__", str(datetime.now().year))
@@ -407,4 +403,6 @@ html = (html
 )
 
 components.html(html, height=1400, scrolling=False)
+
+
 
